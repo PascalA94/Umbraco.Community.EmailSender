@@ -155,3 +155,44 @@ public class OptionsTests
         Assert.Equal(7, options.TimeoutSeconds);
     }
 }
+
+public class OptionsReviewFixTests
+{
+    private static Configuration.EmailSenderOptions Postmark(int timeout = 30, string token = "pm-ok") => new() // gitleaks:allow
+    {
+        Provider = Configuration.EmailProviderKind.Postmark,
+        TimeoutSeconds = timeout,
+        Postmark = { ServerToken = token },
+    };
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(301)]
+    [InlineData(5_000_000)]
+    public void TimeoutSeconds_MustBeBetween1And300(int seconds)
+    {
+        var result = new Configuration.EmailSenderOptionsValidator().Validate(null, Postmark(seconds));
+
+        Assert.True(result.Failed);
+        Assert.Contains("EmailSender:TimeoutSeconds", result.FailureMessage);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(300)]
+    public void TimeoutSeconds_BoundsAreInclusive(int seconds)
+        => Assert.True(new Configuration.EmailSenderOptionsValidator().Validate(null, Postmark(seconds)).Succeeded);
+
+    [Theory]
+    [InlineData("pm-SENTINEL\n")]
+    [InlineData("pm-SENTINEL\r\nX: 1")]
+    [InlineData("pm-SENTINEL-é")]
+    public void ServerToken_WithControlOrNonAsciiCharacters_FailsNamingKeyNotValue(string token) // gitleaks:allow
+    {
+        var result = new Configuration.EmailSenderOptionsValidator().Validate(null, Postmark(token: token));
+
+        Assert.True(result.Failed);
+        Assert.Contains("EmailSender:Postmark:ServerToken", result.FailureMessage);
+        Assert.DoesNotContain("SENTINEL", result.FailureMessage);
+    }
+}

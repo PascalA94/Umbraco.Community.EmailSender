@@ -41,6 +41,7 @@
     <!-- $(UmbracoRange) is set per line in Directory.Build.props. Floors are above the 27 Oct 2026 advisories:
          never lower them without a security review. -->
     <PackageReference Include="Umbraco.Cms.Infrastructure" Version="$(UmbracoRange)" />
+    <PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
   </ItemGroup>
 
   <ItemGroup>

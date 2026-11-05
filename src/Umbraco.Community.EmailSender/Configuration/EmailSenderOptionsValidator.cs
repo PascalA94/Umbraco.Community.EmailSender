@@ -6,6 +6,7 @@ namespace Umbraco.Community.EmailSender.Configuration;
 public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOptions>
 {
     // Attachments are buffered in memory and base64-encoded, and the providers refuse far less than this anyway.
+    internal const int MaxTimeoutSeconds = 300;
     internal const long MaxAttachmentBytesLimit = 50 * 1024 * 1024;
 
     public ValidateOptionsResult Validate(string? name, EmailSenderOptions options)
@@ -17,9 +18,11 @@ public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOp
 
         var failures = new List<string>();
 
-        if (options.TimeoutSeconds <= 0)
+        // The provider enforces this as its only bound (HttpClient.Timeout is infinite), and a huge value overflows the
+        // timer, so it is capped.
+        if (options.TimeoutSeconds is < 1 or > MaxTimeoutSeconds)
         {
-            failures.Add("EmailSender:TimeoutSeconds must be greater than zero.");
+            failures.Add($"EmailSender:TimeoutSeconds must be between 1 and {MaxTimeoutSeconds}.");
         }
 
         if (options.MaxTotalAttachmentBytes is <= 0 or > MaxAttachmentBytesLimit)
@@ -31,6 +34,10 @@ public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOp
         {
             case EmailProviderKind.Postmark when string.IsNullOrWhiteSpace(options.Postmark.ServerToken):
                 failures.Add("EmailSender:Postmark:ServerToken is required when EmailSender:Provider is Postmark.");
+                break;
+            // A trailing newline from a file-mounted secret would make every send fail with a bare FormatException.
+            case EmailProviderKind.Postmark when options.Postmark.ServerToken!.Any(c => char.IsControl(c) || c > 126):
+                failures.Add("EmailSender:Postmark:ServerToken contains a control or non-ASCII character (a trailing newline?).");
                 break;
             case EmailProviderKind.Postmark when string.IsNullOrWhiteSpace(options.Postmark.MessageStream):
                 failures.Add("EmailSender:Postmark:MessageStream must not be blank.");

@@ -107,4 +107,23 @@ public class ComposerTests
 
         Assert.Contains(services, d => d.ImplementationType == typeof(SmtpOverlapStartupWarning));
     }
+
+    [Theory]
+    [InlineData("Postmark", "EmailSender:Postmark:ServerToken", typeof(Umbraco.Community.EmailSender.Providers.Postmark.PostmarkProvider))]
+    [InlineData("AzureCommunicationServices", "EmailSender:AzureCommunicationServices:ConnectionString", typeof(Umbraco.Community.EmailSender.Providers.AzureCommunicationServices.AcsProvider))]
+    public void Provider_ResolvesSenderAndProvider(string kind, string secretKey, Type expectedProvider)
+    {
+        var settings = new Dictionary<string, string?> { ["EmailSender:Provider"] = kind, [secretKey] = "x" }; // gitleaks:allow
+        var services = Compose(settings);
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        services.AddSingleton(Substitute.For<Umbraco.Cms.Core.Events.IEventAggregator>());
+        services.AddOptions<Umbraco.Cms.Core.Configuration.Models.GlobalSettings>();
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = false, ValidateScopes = true });
+
+        Assert.IsType<HttpApiEmailSender>(provider.GetRequiredService<IEmailSender>());
+        Assert.IsType(expectedProvider, provider.GetRequiredService<Umbraco.Community.EmailSender.Providers.IEmailProvider>());
+        Assert.Same(
+            provider.GetRequiredService<Umbraco.Community.EmailSender.Providers.IEmailProvider>(),
+            provider.GetRequiredService<Umbraco.Community.EmailSender.Providers.IEmailProvider>());
+    }
 }

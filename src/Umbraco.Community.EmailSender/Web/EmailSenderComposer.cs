@@ -8,6 +8,8 @@ using Umbraco.Cms.Core.Mail;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Infrastructure.Mail.Interfaces;
 using Umbraco.Community.EmailSender.Configuration;
+using Umbraco.Community.EmailSender.Providers.AzureCommunicationServices;
+using Umbraco.Community.EmailSender.Providers.Postmark;
 using Umbraco.Extensions;
 
 namespace Umbraco.Community.EmailSender.Web;
@@ -24,7 +26,7 @@ public sealed class EmailSenderComposer : IComposer
         }
 
         // Fails at start-up with the allowed values, before any service is registered.
-        EmailProviderKindParser.Parse(provider);
+        var kind = EmailProviderKindParser.Parse(provider);
 
         builder.Services.AddOptions<EmailSenderOptions>()
             .BindConfiguration(EmailSenderOptions.SectionName)
@@ -36,6 +38,18 @@ public sealed class EmailSenderComposer : IComposer
         builder.Services.AddUnique<IEmailSenderClient, HttpApiEmailSenderClient>();
         builder.Services.AddUnique<IEmailSender, HttpApiEmailSender>();
         builder.Services.TryAddSingleton(TimeProvider.System);
+
+        // The provider is chosen once here: a Provider change needs a restart (it also decides which services exist).
+        switch (kind)
+        {
+            case EmailProviderKind.Postmark:
+                builder.Services.AddPostmarkProvider();
+                break;
+            case EmailProviderKind.AzureCommunicationServices:
+                builder.Services.AddAcsProvider();
+                break;
+        }
+
         builder.AddNotificationAsyncHandler<UmbracoApplicationStartingNotification, SmtpOverlapStartupWarning>();
     }
 }
