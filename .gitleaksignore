@@ -1,0 +1,4 @@
+# gitleaks scans every commit in a PR, so a fake test secret needs `// gitleaks:allow` on its line in the commit that
+# adds it. Use this file only to rescue history: one fingerprint per line, in the form printed by gitleaks
+# (<commit>:<file>:<rule>:<line>), each with a comment saying why it is a verified false positive.
+# Leave it empty until a verified false positive needs it.

@@ -1,0 +1,8 @@
+# Normalise text files to LF in the repository and working copy
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

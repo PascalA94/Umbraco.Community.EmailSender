@@ -1,0 +1,9 @@
+# osv-scanner reads a csproj version range such as [18.3.0, 19.0.0) as a version and can match advisories that
+# were fixed long before the floor. The lock files pin the resolved versions and are scanned too, so real issues on
+# the floor are still reported. Pass this file with --config=./osv-scanner.toml (build.yml does).
+#
+# Add an entry only after checking the advisory really does not affect the floor (query OSV for the floor version),
+# and always give the reason. Never ignore an advisory that lists a version at or above the floor as affected.
+[[IgnoredVulns]]
+id = "GHSA-6ffg-mjg7-585x"
+reason = "Affects Umbraco.Cms.Api.Management < 14.3.3 and 15.0.0-rc1 to 15.2.3 only; the package floor is 18.3.0 (OSV query for the floor returns no vulnerabilities)."

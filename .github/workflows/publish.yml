@@ -1,0 +1,66 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'release/*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # NuGet Trusted Publishing (OIDC): no long-lived API key
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # One tag (release/<minor>.<patch>[-suffix]) packs both lines from one commit, so it must be on main.
+      - name: Tag is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Version files match the tag
+        run: bash build/check-release-version.sh "$GITHUB_REF_NAME"
+
+      # No NuGet cache here (cache: true is deliberately absent): a release never restores from a PR-filled cache.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.x'
+
+      # Both lines, each at its own lock file: tests, then the vulnerable-packages gate (parsed output, never the exit
+      # code) before anything is packed.
+      - name: Test and audit both lines
+        run: |
+          bash scripts/test.sh
+          while read -r line; do
+            [ -z "$line" ] && continue
+            dotnet restore src/Umbraco.Community.EmailSender.slnx --locked-mode "-p:UmbracoMajor=$line"
+            bash build/check-vulnerable.sh
+          done < eng/lines.txt
+
+      # One nupkg per line from this commit. Only the package is packed: tests and the demo site are IsPackable=false.
+      - name: Pack
+        run: bash scripts/pack.sh
+
+      # Needs the repository secret NUGET_USER (the nuget.org profile name, not a key) and a Trusted Publishing
+      # policy on nuget.org for this repository and workflow file (see .github/REPO-SETUP.md).
+      - name: NuGet login (Trusted Publishing)
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          test "$(find artifacts -name "*.nupkg" | wc -l)" -eq "$(grep -c . eng/lines.txt)"
+          dotnet nuget push ./artifacts/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY"

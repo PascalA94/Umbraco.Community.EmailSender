@@ -1,0 +1,130 @@
+name: Build and Test
+
+# Fast PR checks only (about 5 minutes): build and SQLite tests on both Umbraco lines (17 and 18) at the floor and at the
+# latest minor, gitleaks, osv-scanner and check-vulnerable. Never add e2e or SQL Server here: they live in
+# release-checks.yml, which is run by hand.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: build (${{ matrix.line }}, ${{ matrix.leg }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # line: the Umbraco major (UmbracoMajor, see Directory.Build.props); both lines build from this one branch.
+        # floor: locked restore at the committed lock files (UmbracoTestVersion / UmbracoDemoVersion defaults).
+        # latest: newest 17.x / 18.x, restored unlocked; the lock files it rewrites are never committed.
+        line: [17, 18]
+        leg: [floor, latest]
+    env:
+      LINE_PROPS: ${{ matrix.leg == 'latest' && format('-p:UmbracoMajor={0} -p:UmbracoTestVersion={0}.* -p:UmbracoDemoVersion={0}.*', matrix.line) || format('-p:UmbracoMajor={0}', matrix.line) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.x'
+          # NuGet cache keyed on the lock files. Not used in publish.yml, so a release never restores from a PR-filled cache.
+          cache: true
+          cache-dependency-path: '**/packages.*.lock.json'
+
+      - name: Restore (locked)
+        if: matrix.leg == 'floor'
+        run: |
+          # shellcheck disable=SC2086 # LINE_PROPS is built from the matrix and must split into separate arguments
+          dotnet restore src/Umbraco.Community.EmailSender.slnx --locked-mode $LINE_PROPS
+
+      - name: Lock files unchanged
+        if: matrix.leg == 'floor'
+        run: git diff --exit-code -- '**/packages.*.lock.json'
+
+      - name: Restore (latest minor, unlocked)
+        if: matrix.leg == 'latest'
+        run: |
+          # shellcheck disable=SC2086 # LINE_PROPS is built from the matrix and must split into separate arguments
+          dotnet restore src/Umbraco.Community.EmailSender.slnx $LINE_PROPS --force-evaluate -p:RestoreLockedMode=false
+
+      - name: Build
+        run: |
+          # shellcheck disable=SC2086 # LINE_PROPS is built from the matrix and must split into separate arguments
+          dotnet build src/Umbraco.Community.EmailSender.slnx -c Release --no-restore $LINE_PROPS
+
+      # Unit and integration tests (SQLite). SQL Server and e2e run in release-checks.yml.
+      - name: Test
+        run: |
+          # shellcheck disable=SC2086 # LINE_PROPS is built from the matrix and must split into separate arguments
+          dotnet test src/Umbraco.Community.EmailSender.slnx -c Release --no-build --logger "trx;LogFileName=results.trx" $LINE_PROPS
+
+      - name: Upload test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: test-results-${{ matrix.line }}-${{ matrix.leg }}
+          path: '**/results.trx'
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # Scans every commit in the PR range: put `// gitleaks:allow` on fake test secrets in the commit that adds them.
+      - name: gitleaks
+        run: bash build/gitleaks.sh "${{ github.event.pull_request.base.sha || github.event.before }}..${{ github.sha }}"
+
+  osv:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    with:
+      fail-on-vuln: true
+      upload-sarif: false
+      # osv-scanner only recognises lock files named packages.lock.json, and ours are packages.<line>.lock.json (one per
+      # Umbraco line), so each is passed by path with the nuget type. --recursive still reads the csproj ranges.
+      scan-args: |-
+        --config=./osv-scanner.toml
+        --recursive
+        -L packages.lock.json:src/Umbraco.Community.EmailSender/packages.17.lock.json
+        -L packages.lock.json:src/Umbraco.Community.EmailSender.Tests/packages.17.lock.json
+        -L packages.lock.json:src/Umbraco.Community.EmailSender.IntegrationTests/packages.17.lock.json
+        -L packages.lock.json:demo/Umbraco.Community.EmailSender.DemoSite/packages.17.lock.json
+        -L packages.lock.json:src/Umbraco.Community.EmailSender/packages.18.lock.json
+        -L packages.lock.json:src/Umbraco.Community.EmailSender.Tests/packages.18.lock.json
+        -L packages.lock.json:src/Umbraco.Community.EmailSender.IntegrationTests/packages.18.lock.json
+        -L packages.lock.json:demo/Umbraco.Community.EmailSender.DemoSite/packages.18.lock.json
+        ./
+
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.x'
+          # NuGet cache keyed on the lock files. Not used in publish.yml, so a release never restores from a PR-filled cache.
+          cache: true
+          cache-dependency-path: '**/packages.*.lock.json'
+      # Both lines: each restores at its own lock file and is audited.
+      - name: Vulnerable packages, both lines (direct and transitive)
+        run: |
+          while read -r line; do
+            [ -z "$line" ] && continue
+            dotnet restore src/Umbraco.Community.EmailSender.slnx --locked-mode "-p:UmbracoMajor=$line"
+            bash build/check-vulnerable.sh
+          done < eng/lines.txt

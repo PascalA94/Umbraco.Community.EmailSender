@@ -1,0 +1,57 @@
+<Project>
+  <!--
+    One codebase, two Umbraco lines (plan Task 1). UmbracoMajor is 17 or 18 (default 18) and selects:
+      - UmbracoFloor / UmbracoRange: the CMS range the package references and ships with,
+      - the UMBRACO_17 / UMBRACO_18 define (UMBRACO_17 guards only the obsolete SendAsync(EmailMessage) overload),
+      - one lock file per line (packages.17.lock.json, packages.18.lock.json), and
+      - the package version prefix (17.x.y / 18.x.y).
+    eng/lines.txt lists the lines; scripts/test.sh and scripts/pack.sh loop over it.
+
+    Lock files describe the floor: they are generated and committed at the default values of
+    UmbracoTestVersion and UmbracoDemoVersion (the floor of the selected line). The latest-minor CI leg overrides
+    those two properties (17.* or 18.*) and restores unlocked (force-evaluate, RestoreLockedMode=false); the lock
+    files it rewrites are never committed. Nothing else overrides these properties.
+
+    Floors never go below 17.8.0 (line 17) / 18.3.0 (line 18): they sit above the 27 Oct 2026 advisories.
+    Lowering one needs a security review first.
+  -->
+  <PropertyGroup>
+    <UmbracoMajor Condition="'$(UmbracoMajor)' == ''">18</UmbracoMajor>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(UmbracoMajor)' == '17'">
+    <UmbracoFloor>17.8.0</UmbracoFloor>
+    <UmbracoRange>[17.8.0, 18.0.0)</UmbracoRange>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UmbracoMajor)' == '18'">
+    <UmbracoFloor>18.3.0</UmbracoFloor>
+    <UmbracoRange>[18.3.0, 19.0.0)</UmbracoRange>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <UmbracoMajorValid Condition="'$(UmbracoMajor)' == '17' or '$(UmbracoMajor)' == '18'">true</UmbracoMajorValid>
+  </PropertyGroup>
+  <Target Name="ValidateUmbracoMajor" BeforeTargets="CollectPackageReferences;Restore;Build" Condition="'$(UmbracoMajorValid)' != 'true'">
+    <Error Text="UmbracoMajor must be 17 or 18 (got '$(UmbracoMajor)')." />
+  </Target>
+
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetLockFilePath>packages.$(UmbracoMajor).lock.json</NuGetLockFilePath>
+    <!-- Audit direct and transitive dependencies; build/check-vulnerable.sh is the PR and release gate. -->
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <DefineConstants>$(DefineConstants);UMBRACO_$(UmbracoMajor)</DefineConstants>
+    <UmbracoTestVersion Condition="'$(UmbracoTestVersion)' == ''">$(UmbracoFloor)</UmbracoTestVersion>
+    <UmbracoDemoVersion Condition="'$(UmbracoDemoVersion)' == ''">$(UmbracoFloor)</UmbracoDemoVersion>
+  </PropertyGroup>
+
+  <!-- The package's own number. A release/<minor>.<patch>[-suffix] tag packs both lines: 17.<minor>.<patch>[-suffix] and
+       18.<minor>.<patch>[-suffix]. build/check-release-version.sh compares the tag with these three values. -->
+  <PropertyGroup>
+    <PackageMinor>0</PackageMinor>
+    <PackagePatch>0</PackagePatch>
+    <PackageSuffix>alpha.1</PackageSuffix>
+    <Version Condition="'$(PackageSuffix)' != ''">$(UmbracoMajor).$(PackageMinor).$(PackagePatch)-$(PackageSuffix)</Version>
+    <Version Condition="'$(PackageSuffix)' == ''">$(UmbracoMajor).$(PackageMinor).$(PackagePatch)</Version>
+  </PropertyGroup>
+</Project>

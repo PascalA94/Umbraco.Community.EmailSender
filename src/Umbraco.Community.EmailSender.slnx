@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Umbraco.Community.EmailSender/Umbraco.Community.EmailSender.csproj" />
+  <Project Path="Umbraco.Community.EmailSender.Tests/Umbraco.Community.EmailSender.Tests.csproj" />
+  <Project Path="Umbraco.Community.EmailSender.IntegrationTests/Umbraco.Community.EmailSender.IntegrationTests.csproj" />
+  <Project Path="../demo/Umbraco.Community.EmailSender.DemoSite/Umbraco.Community.EmailSender.DemoSite.csproj" />
+</Solution>

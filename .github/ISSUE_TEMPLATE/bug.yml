@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in Email Sender does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security issues: please don't open an issue.** Report them privately (see the Security tab).
+        Please don't include personal data from your site.
+  - type: input
+    id: umbraco
+    attributes:
+      label: Umbraco version
+      description: The exact version, for example 18.3.0 (not "v18").
+    validations:
+      required: true
+  - type: input
+    id: package
+    attributes:
+      label: Email Sender version
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options: [SQL Server, SQLite, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: On a clean install if you can. Include any settings you changed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors
+      description: Browser console errors and server log lines, if any.
+      render: text

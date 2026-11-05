@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Umbraco's test framework has nullable-oblivious APIs and obsolete members we must call on purpose -->
+    <NoWarn>$(NoWarn);CS0618;NU1608</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NUnit 3.14: the version Umbraco.Cms.Tests is built against; NUnit 4 is not binary compatible with it. -->
+    <!-- UmbracoTestVersion: the floor by default (Directory.Build.props); the CI latest leg overrides it (P1). -->
+    <PackageReference Include="Umbraco.Cms.Tests.Integration" Version="$(UmbracoTestVersion)" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umbraco.Community.EmailSender\Umbraco.Community.EmailSender.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Read by Umbraco's test framework. SQLite by default; the release-checks job sets Tests__Database__* env vars for SQL Server. -->
+    <None Update="appsettings.Tests.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+  <!-- WebApplicationFactory<UmbracoTestServerTestBase> looks for the deps file of the assembly that defines the
+       factory's entry type (Umbraco.Tests.Integration). Ours describes the same dependency graph, so copy it. -->
+  <Target Name="CopyDepsForUmbracoTestServer" AfterTargets="Build">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).deps.json" DestinationFiles="$(OutDir)Umbraco.Tests.Integration.deps.json" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

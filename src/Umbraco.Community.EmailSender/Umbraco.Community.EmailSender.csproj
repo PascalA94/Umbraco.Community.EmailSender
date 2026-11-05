@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Umbraco.Community.EmailSender</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Umbraco.Community.EmailSender</PackageId>
+    <Authors>Pascal Meyer</Authors>
+    <Description>Send every Umbraco email through an HTTP API (Azure Communication Services, Postmark, GOV.UK Notify) instead of SMTP.</Description>
+    <Copyright>Copyright © Pascal Meyer</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/PascalA94/Umbraco.Community.EmailSender</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/PascalA94/Umbraco.Community.EmailSender</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>umbraco;umbraco-marketplace;email;smtp;azure-communication-services;postmark;gov-uk-notify;transactional-email</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <!-- Debugging support: Source Link plus a .snupkg symbol package -->
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!-- Deterministic, path-normalised builds in CI so published binaries are reproducible -->
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- $(UmbracoRange) is set per line in Directory.Build.props. Floors are above the 27 Oct 2026 advisories:
+         never lower them without a security review. -->
+    <PackageReference Include="Umbraco.Cms.Infrastructure" Version="$(UmbracoRange)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Read by ScaffoldTests: proves the built assembly targets the selected line. -->
+    <AssemblyMetadata Include="UmbracoMajor" Value="$(UmbracoMajor)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbraco.Community.EmailSender.Tests" />
+    <InternalsVisibleTo Include="Umbraco.Community.EmailSender.IntegrationTests" />
+    <!-- NSubstitute proxies for internal types -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+</Project>

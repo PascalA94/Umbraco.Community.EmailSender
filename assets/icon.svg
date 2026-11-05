@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Placeholder package icon: replace with the package's own design (keep 128x128, and re-render icon.png). -->
+  <rect width="128" height="128" rx="24" fill="#1b264f"/>
+  <path d="M64 26 98 44v40L64 102 30 84V44z" fill="#ffffff"/>
+  <path d="M64 26 98 44 64 62 30 44z" fill="#f5c1bc"/>
+  <path d="M64 62v40" stroke="#1b264f" stroke-width="4"/>
+</svg>

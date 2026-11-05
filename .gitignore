@@ -1,0 +1,42 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+*.nupkg
+*.snupkg
+*.binlog
+*.log
+
+# Node
+node_modules/
+
+# Editors and OS
+.vs/
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.user
+.DS_Store
+Thumbs.db
+
+# Playwright and local e2e config
+test-results/
+playwright-report/
+tests/e2e/.env
+
+# Umbraco demo site runtime files (database, logs, media, mail pickup, temp indexes)
+appsettings.Local.json
+appsettings-schema.json
+appsettings-schema.*.json
+umbraco-package-schema.json
+**/umbraco/Data/
+**/umbraco/Logs/
+**/wwwroot/media/
+
+# Never commit credentials or private review material
+.env
+*.pfx

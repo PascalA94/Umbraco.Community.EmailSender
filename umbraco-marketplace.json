@@ -1,0 +1,18 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "Email Sender",
+  "Description": "Send every Umbraco email through an HTTP API (Azure Communication Services, Postmark, GOV.UK Notify) instead of SMTP.",
+  "Category": "Editor Tools",
+  "PackageType": "Package",
+  "LicenseTypes": ["Free"],
+  "DocumentationUrl": "https://github.com/PascalA94/Umbraco.Community.EmailSender#readme",
+  "IssueTrackerUrl": "https://github.com/PascalA94/Umbraco.Community.EmailSender/issues",
+  "LookingForContributors": true,
+  "AuthorDetails": {
+    "Name": "Pascal Meyer",
+    "Url": "https://github.com/PascalA94",
+    "ImageUrl": "https://github.com/PascalA94.png"
+  },
+  "Screenshots": [],
+  "Tags": ["email", "smtp", "azure-communication-services", "postmark", "gov-uk-notify", "transactional-email"]
+}

@@ -1,0 +1,17 @@
+version: 2
+# Routine version-update PRs are off (open-pull-requests-limit: 0). Security updates still open PRs: they follow the
+# repository setting "Dependabot security updates", not this limit. Raise the limit to turn version updates back on.
+# Upgrade dev-tool majors (Vite, Vitest, TypeScript, Playwright) by hand, in their own PR.
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - /src
+      - /demo/Umbraco.Community.EmailSender.DemoSite
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
