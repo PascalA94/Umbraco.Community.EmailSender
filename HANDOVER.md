@@ -10,4 +10,5 @@
   3. `grep -rnE "/Users/|~/Documents|~/Projects" . --exclude-dir=.git -I --exclude='*.lock.json'` must print nothing.
   4. Follow `.github/REPO-SETUP.md`. On the first PR, read the real check names (the `osv` job shows as `osv / <job>`) before setting the ruleset.
 - **Pascal-only steps:** push, tag, publish, repo visibility, NuGet ID reservation and Trusted Publishing. Provider test credentials go in user-secrets when needed (Task 11).
-- **Next session starts at:** Task 2.
+- **State (M1):** Tasks 2-4 built (options, mapping, sender, client). Both lines pass (unit 87 on 18, 89 on 17; integration 2/2). No provider exists yet, so do not pack or tag.
+- **Next session starts at:** Task 5.
