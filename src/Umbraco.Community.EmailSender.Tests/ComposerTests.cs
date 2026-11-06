@@ -111,6 +111,7 @@ public class ComposerTests
     [Theory]
     [InlineData("Postmark", "EmailSender:Postmark:ServerToken", typeof(Umbraco.Community.EmailSender.Providers.Postmark.PostmarkProvider))]
     [InlineData("AzureCommunicationServices", "EmailSender:AzureCommunicationServices:ConnectionString", typeof(Umbraco.Community.EmailSender.Providers.AzureCommunicationServices.AcsProvider))]
+    [InlineData("GovUkNotify", "EmailSender:GovUkNotify:ApiKey", typeof(Umbraco.Community.EmailSender.Providers.GovUkNotify.NotifyProvider))]
     public void Provider_ResolvesSenderAndProvider(string kind, string secretKey, Type expectedProvider)
     {
         var settings = new Dictionary<string, string?> { ["EmailSender:Provider"] = kind, [secretKey] = "x" }; // gitleaks:allow

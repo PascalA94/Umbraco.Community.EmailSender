@@ -12,3 +12,6 @@
 - **Pascal-only steps:** push, tag, publish, repo visibility, NuGet ID reservation and Trusted Publishing. Provider test credentials go in user-secrets when needed (Task 11).
 - **State (M1):** Tasks 2-4 built (options, mapping, sender, client). Both lines pass (unit 87 on 18, 89 on 17; integration 2/2). No provider exists yet, so do not pack or tag.
 - **Next session starts at:** Task 5.
+- **State (M3):** Tasks 6, 6b, 7 and 8 built: Postmark, ACS and GOV.UK Notify providers, the Email provider health check, leak tests and the docs. Both lines pass (unit 254 on 17, 252 on 18; integration 2/2). Not done: Task 9 (first CI run, Pascal), 10 (final review) and 11 (live exercise).
+- **Pascal, before the first release tag (security High from the M3 review):** create the GitHub environment `nuget` with you as required reviewer and tags limited to `release/*`; set Environment `nuget` on the nuget.org Trusted Publishing policy; add a tag ruleset on `refs/tags/release/*`. See `.github/REPO-SETUP.md` step 6.
+- **Next session starts at:** Task 10 once Task 9 is green.

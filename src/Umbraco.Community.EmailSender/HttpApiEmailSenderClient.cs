@@ -30,7 +30,8 @@ internal sealed class HttpApiEmailSenderClient(
                 globalSettings.CurrentValue.Smtp?.From,
                 expires,
                 current.MaxTotalAttachmentBytes,
-                clock);
+                clock,
+                provider.UsesFromAddress);
 
             await provider.SendAsync(email, CancellationToken.None);
         }

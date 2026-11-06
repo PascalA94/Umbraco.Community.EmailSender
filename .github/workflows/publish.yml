@@ -89,10 +89,12 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # --skip-duplicate: two packages go up in one step, so a rerun after a partial push must not fail on the first one.
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push ./artifacts/*.nupkg \
             --source https://api.nuget.org/v3/index.json \
-            --api-key "$NUGET_API_KEY"
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate

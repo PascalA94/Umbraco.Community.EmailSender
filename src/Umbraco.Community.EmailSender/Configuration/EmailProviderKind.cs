@@ -5,6 +5,7 @@ public enum EmailProviderKind
 {
     AzureCommunicationServices,
     Postmark,
+    GovUkNotify,
 }
 
 /// <summary>Parses <c>EmailSender:Provider</c> case-insensitively and names the allowed values on failure.</summary>

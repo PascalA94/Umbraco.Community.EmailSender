@@ -172,6 +172,21 @@
 - [ ] **Step 4:** run them. Expected: PASS.
 - [ ] **Checkpoint (Pascal commits):** `feat: Azure Communication Services provider`
 
+### Task 6b: GOV.UK Notify provider
+
+**Files:** `SRC/Providers/GovUkNotify/{NotifyProvider,NotifyRequest,NotifyApiKey,NotifyBodyFormatter,NotifyServiceCollectionExtensions}.cs`, `SRC/Configuration/*` (kind, options, validator), `TESTS/NotifyProviderTests.cs`
+
+**Interfaces:**
+- Produces `NotifyProvider : IEmailProvider`, named client `community.emailSender.govUkNotify`, base `https://api.notifications.service.gov.uk/`, `AllowAutoRedirect = false`.
+- Adds `IEmailProvider.UsesFromAddress` (default true; false for Notify) and `OutboundEmail.Create(..., fromRequired)`: Notify needs no From.
+- Config: `EmailSender:GovUkNotify:{ApiKey, EmailTemplateId, ReplyToId}`; `Provider` value `GovUkNotify`.
+
+- [ ] **Step 1:** write the failing tests: signed HS256 token (`iss` service id, `iat`); `POST /v2/notifications/email` with `personalisation.subject` and `.body`; one request per recipient; HTML reduced to text keeping http(s) links; attachments, Cc, Bcc and more than 50 recipients fail before sending; message reply-to ignored with a warning; error mapping with no response text; partial-failure count; timeout; health check via `GET /v2/template/{id}`; key and options validation.
+- [ ] **Step 2:** run them. Expected: FAIL.
+- [ ] **Step 3:** implement; hand-rolled HS256 (no JWT dependency); read at most 4 KB of an error body and 64 KB of a template.
+- [ ] **Step 4:** run `./scripts/test.sh`. Expected: PASS on both lines.
+- [ ] **Checkpoint (Pascal commits):** `feat: GOV.UK Notify provider`
+
 ### Task 7: Health check and leak tests
 
 **Files:** `SRC/HealthChecks/EmailProviderHealthCheck.cs`, `TESTS/{HealthCheckTests,LeakTests}.cs`

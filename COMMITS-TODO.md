@@ -10,35 +10,41 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 4 checkpoint: `feat: IEmailSender and client that bypass the SMTP gate`
 - [x] Task 5 checkpoint: `feat: Postmark provider`
 - [x] Task 6 checkpoint: `feat: Azure Communication Services provider`
+- [x] Task 6b checkpoint: `feat: GOV.UK Notify provider`
+- [x] Task 7 checkpoint: `feat: provider health check and leak tests`
+- [x] Task 8 checkpoint: `docs: README, Marketplace and release workflow` (Step 5, reserving the NuGet ID, is Pascal's)
 
-## Paused here (2026-11-05, M2)
+## Paused here (2026-11-05, M3)
 
-Milestone: M2 done (Tasks 5 and 6: Postmark and Azure Communication Services providers). The plan defines no milestones, so I ruled M2 = the two planned providers. Ruling: GOV.UK Notify is not in plan.md yet, so it opens M3 as new Task 6b, with the health check, leak tests and docs. Cost if wrong: one reshuffle of M3.
-Tests: `./scripts/test.sh` passes on both lines (unit 153 on 17, 151 on 18; integration 2/2 each). `check-vulnerable` is clean. New package: `Azure.Communication.Email` 1.1.0; lock files regenerated for both lines (8 files). CI has not run.
-Reviews (diff since the M1 commit): qa-reviewer found no Critical (3 Important, 4 Minor); security-analyst found no Critical or High (2 Medium, 5 Low, 5 Info). Fixed with a failing test first: `TimeoutSeconds` capped 1 to 300; providers wrap any non-`EmailSendException` as type name only (Postmark and ACS); ACS status 0 reported as "could not be reached"; SDK network timeout raised; token control/non-ASCII rejected at start-up; factory header logging redacted on both clients; one strict ACS connection-string parser with an https and `*.communication.azure.*` host allow-list, client built from parsed parts; `PostmarkHeader.ToString`; ACS caller-cancellation test. Carried in from M1 and done: `TimeoutSeconds` applied in providers, `IEmailProvider` registered per provider in the composer, container test resolves `IEmailSender` for both providers, Postmark address parsing re-checked (spikes).
-Ruling: no config override for the ACS host allow-list (config keys are permanent). Cost if wrong: a sovereign-cloud user waits for a patch.
-Next task: **Task 6b (new): GOV.UK Notify provider**, then Task 7 (health check and leak tests; extend the leak theory to all three providers), Task 8 (README and docs). Read `~/Documents/Projects/Umbraco Packages/15-http-email-sender/scope.md` section "Added provider" first, and add Task 6b to `docs/plan.md`. Ask Pascal for a Notify trial-mode key only at Task 11.
+Milestone: M3 done (Task 6b GOV.UK Notify provider, Task 7 health check and leak tests, Task 8 docs, Marketplace and release workflow). Rulings: M3 = Tasks 6b, 7 and 8 as the M2 note set out. Notify config key is `GovUkNotify` (permanent once released); no From needed for Notify (`IEmailProvider.UsesFromAddress`, `OutboundEmail.Create(fromRequired)`); attachments, Cc and Bcc fail before sending; a message reply-to is ignored with a warning (not failed, so an invite is never blocked). Cost if wrong: a rename or a behaviour flip before 1.0.
+Tests: `./scripts/test.sh` passes on both lines (unit 254 on 17, 252 on 18; integration 2/2 each). `check-vulnerable` clean on both (no new package). `actionlint` clean. CI has not run.
+TDD note: Task 7's `HealthCheckTests` and `EmailProviderHealthCheck` were written together and passed first time (no watched RED); `LeakTests` was proven by mutation (a deliberate address in a Postmark log line failed 6 cases).
+Reviews (diff since the M2 commit): qa-reviewer no Critical (4 Important, 9 Minor); security-analyst no Critical (1 High, 1 Medium, 5 Low, 3 Info). Fixed with a failing test first: LeakTests now echo request headers, include JWT/signature sentinels, require every path to throw, read scopes, and run a real `IHttpClientFactory` pipeline at Trace (this found that the factory's structured log state holds the raw credential header, so all three clients now use `RemoveAllLoggers()`); Notify partial failure reports "N of M" for any exception; Markdown link injection into Notify (brackets neutralised, real anchors kept); `--skip-duplicate` on the NuGet push. The security High (the `nuget` environment, the Trusted Publishing environment field and a tag ruleset are never set up) is Pascal's: see REPO-SETUP step 6 and the to-do in HANDOVER at the end.
+Found: `.github/workflows/publish.yml` was already modified on disk (split build and publish jobs, OIDC only in publish) when I first read it this session; I did not write that change. I reviewed it (actionlint clean, SHAs resolve) and left it in the milestone commit. Say if it should not be.
+Next task: **Task 9 is Pascal's** (first full GitHub CI run: repo public, push, PR, Release checks). Then Task 10 (final whole-branch review: qa-reviewer plus security-analyst, full review) and Task 11 (exercise it for real on 17 and 18; ask Pascal for Postmark, ACS and a Notify trial-mode key, set in user-secrets, then). HANDOVER.md is written when the final milestone is done.
 Deferred minors:
-- ACS has no recipient-count guard (Postmark has 50). The 10 MB attachment cap is raw bytes; base64 makes it about 13.3 MB on the wire, so say so in the README.
-- README must say: a `Provider` change needs a restart; a host-level resilience handler (`ConfigureHttpClientDefaults`) would retry POSTs and duplicate emails; the ACS endpoint must be a `*.communication.azure.*` host.
-- Test gaps: no concurrency test for the ACS client cache lock; no check that the health checks honour `TimeoutSeconds`; log-output leak assertions on failure paths come with Task 7's leak theory.
-- `Redirect_IsAFailureAndTheTokenIsNotResent` proves only that a 3xx is a failure; the no-redirect guarantee is `NamedClient_HasPostmarkBaseAddressAndNoRedirects`.
-- ACS operation-id idempotency would allow safe retries later; `IsTelemetryEnabled` left on; the ACS response size is unbounded (bounded by the host allow-list and the timeout).
-- To check live in Task 11: ACS and the `Expires` header.
-- From M1, still open: MimeKit used transitively; the config binder echoes a mistyped value for `TimeoutSeconds`, `MaxTotalAttachmentBytes` and `DisableLinkTracking`; `EmailProviderKindParser` is public; the attachment path is synchronous and buffers; never `{@}`-destructure the options or `OutboundEmail` in logs.
+- NotifyProvider: `TimeoutSeconds` is per request (up to 50 x); no input-length cap before the HTML regexes; unquoted `href` links are dropped; empty subject or body gives an opaque 400; 403 hint should mention clock skew; reply-to fails open (consider `ReplyToBehaviour`); 64 KB template cap gives a misleading Warning for a huge template.
+- `OutboundEmail.Create` still validates an unparseable From when `fromRequired` is false.
+- `IEmailProvider`: the `<exception>` doc now sits on `UsesFromAddress` instead of `SendAsync`.
+- Formatter test gaps (parentheses in URLs, uppercase tags, unterminated script); no integration test that Umbraco's collection builder constructs `EmailProviderHealthCheck` with no provider set; `Check_HasNoActions` is low value; LeakTests does not cover ACS in the real-pipeline test or `HttpApiEmailSender`.
+- publish.yml: drop `setup-dotnet` from the publish job, check the nupkg names against the tag, `persist-credentials: false` on checkout.
+- Carried from M2: ACS no recipient-count guard, 10 MB cap is raw bytes, no concurrency test on the ACS client cache, `Redirect_IsAFailureAndTheTokenIsNotResent` proves only that a 3xx fails, MimeKit used transitively, config binder echoes a mistyped `TimeoutSeconds`/`MaxTotalAttachmentBytes`/`DisableLinkTracking`, `EmailProviderKindParser` is public, attachment path is synchronous and buffers, never `{@}`-destructure the options or `OutboundEmail` in logs.
+- To check live in Task 11: ACS and the `Expires` header; Notify trial-mode refusal text, `((subject))` in the subject, the 30-second token window, Markdown rendering of personalisation, dashboard visibility of reset links.
 
 ## Milestone commit
 
-Check `git status` first: only `src/`, `docs/spikes.md`, the lock files and this file should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs). Ignored `bin/`, `obj/` and schema files are fine.
+Check `git status` first: only `src/`, `docs/`, `README.md`, `CLAUDE.md`, `umbraco-marketplace.json`, `.github/` and this file should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs). No lock file changed in M3. Ignored `bin/`, `obj/` and schema files are fine.
 
 ```bash
 git add -A
-git commit -m "feat: Postmark and Azure Communication Services providers
+git commit -m "feat: GOV.UK Notify provider, health check and docs
 
-Adds PostmarkProvider (POST /email, per-message link tracking off, 50-recipient limit)
-and AcsProvider (Azure.Communication.Email 1.1.0, WaitUntil.Started, retries off,
-strict connection-string parsing). Both enforce EmailSender:TimeoutSeconds (1 to 300),
-follow no redirects, redact logged headers and fail with status-only EmailSendException.
-The composer registers the provider chosen by EmailSender:Provider."
+Adds NotifyProvider (hand-signed HS256 token, one request per recipient, HTML reduced
+to text with Markdown links neutralised, no attachments, Cc or Bcc, no From needed),
+the Email provider health check, and leak tests over every provider and failure path,
+including a real HttpClientFactory pipeline run at Trace. The named HTTP clients drop
+the factory's own logging because its structured state carried the credential header.
+README, CLAUDE.md, Marketplace tags and the release workflow (split build and publish
+jobs, --skip-duplicate, environment setup in REPO-SETUP)."
 git log -1 --stat | head -5
 ```
