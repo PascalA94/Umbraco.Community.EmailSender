@@ -14,6 +14,24 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 7 checkpoint: `feat: provider health check and leak tests`
 - [x] Task 8 checkpoint: `docs: README, Marketplace and release workflow` (Step 5, reserving the NuGet ID, is Pascal's)
 
+- [x] Task 9: CI green on GitHub (Build and Test and Release checks, run by Pascal)
+- [x] Task 10 checkpoint: `fix: final review findings`
+
+## Paused here (2026-11-06, M4: Task 10 final review)
+
+Milestone: Task 10 done. Full qa-reviewer (opus) and security-analyst (opus) reviews of the whole branch: no Critical or High. Fixed with a failing test first: Notify formatter link-marker forging via `&#xE000;N&#xE001;` (found by both; the formatter now cleans text between anchors and appends links, so no placeholder exists); ACS connection string validated at start-up (shape only, never echoed); booted-host integration tests (`HostWiringTests`: no provider leaves core services; Postmark with no `Smtp:Host` replaces sender and client and `CanSendRequiredEmail` is true; mutation-checked).
+Tests: `./scripts/test.sh` passes on both lines (unit 262 on 17, 260 on 18; integration 4/4 each). `check-vulnerable` clean on both. CI was green before this milestone; the fixes have not run on GitHub yet.
+Rulings: the plan's demo-site smoke step for `release-checks.yml` is not added (Task 11 covers it live). Minor and Low findings are deferred, not fixed. Cost if wrong: a few polish items ship in 0.x.
+Next task: **Task 11 (live exercise on 17 and 18)**. Needs from Pascal, in user-secrets on the demo site: Postmark server token (or `POSTMARK_API_TEST`), ACS connection string with a verified sender domain, GOV.UK Notify trial-mode key and template. Check first that ACS and Postmark accept the `Expires` header. HANDOVER.md is written in full after Task 11.
+Pascal decides (not blocking):
+1. Local paths (OS username, a private review folder path) remain in the git history of the already-public repo: accept, or rewrite before the first release.
+2. `HANDOVER.md` and `COMMITS-TODO.md` are tracked in the public repo and list open security gaps; CLAUDE.md says no reviews in the repo. Consider untracking both.
+3. The `nuget` environment does not exist yet (0 environments): do REPO-SETUP step 6 before pushing any `release/*` tag.
+Deferred minors (M4):
+- QA: `NamedClient_RedactsAllLoggedHeaders` (Acs and Postmark tests) is vacuous and ACS is not in the real-pipeline leak test; `PackageConstantsTests.Composer_can_be_constructed` cannot fail; public leftovers (`AppPluginsFolder`, `AliasPrefix`, `EmailSendException(string, Exception?)`, public validator and parser); docs say UMBRACO_17 is only the `SendAsync(EmailMessage)` overload but it also holds two obsolete `IEmailSender` overloads (CLAUDE.md, Directory.Build.props, design section 2); `HttpApiEmailSenderClient` reads `CurrentValue` outside its try.
+- Security: strip Cf, Zl and Zp characters in `SafeFileName` and subject (RTLO); no scheduled vulnerability scan (add a cron to build.yml); unused `GHSA-6ffg-mjg7-585x` ignore in osv-scanner.toml; README should warn that Postmark Activity keeps invite and reset links; pin the SQL Server image by digest; `security-events: write` on the osv job.
+- To check live in Task 11: the Forms email path, and `&#xE000;0&#xE001;` in a Forms field through Notify.
+
 ## Paused here (2026-11-05, M3)
 
 Milestone: M3 done (Task 6b GOV.UK Notify provider, Task 7 health check and leak tests, Task 8 docs, Marketplace and release workflow). Rulings: M3 = Tasks 6b, 7 and 8 as the M2 note set out. Notify config key is `GovUkNotify` (permanent once released); no From needed for Notify (`IEmailProvider.UsesFromAddress`, `OutboundEmail.Create(fromRequired)`); attachments, Cc and Bcc fail before sending; a message reply-to is ignored with a warning (not failed, so an invite is never blocked). Cost if wrong: a rename or a behaviour flip before 1.0.
@@ -33,18 +51,17 @@ Deferred minors:
 
 ## Milestone commit
 
-Check `git status` first: only `src/`, `docs/`, `README.md`, `CLAUDE.md`, `umbraco-marketplace.json`, `.github/` and this file should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs). No lock file changed in M3. Ignored `bin/`, `obj/` and schema files are fine.
+Check `git status` first: only `src/`, `COMMITS-TODO.md` and `HANDOVER.md` should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs). No lock file changed in M4. Ignored `bin/`, `obj/` and schema files are fine.
 
 ```bash
 git add -A
-git commit -m "feat: GOV.UK Notify provider, health check and docs
+git commit -m "fix: final review findings
 
-Adds NotifyProvider (hand-signed HS256 token, one request per recipient, HTML reduced
-to text with Markdown links neutralised, no attachments, Cc or Bcc, no From needed),
-the Email provider health check, and leak tests over every provider and failure path,
-including a real HttpClientFactory pipeline run at Trace. The named HTTP clients drop
-the factory's own logging because its structured state carried the credential header.
-README, CLAUDE.md, Marketplace tags and the release workflow (split build and publish
-jobs, --skip-duplicate, environment setup in REPO-SETUP)."
+Notify body formatter no longer uses in-band link placeholders, so entity-encoded
+private-use characters in visitor text cannot forge or crash a link. A malformed
+Azure Communication Services connection string now fails at start-up, naming the key
+and never echoing the value. Adds booted-host integration tests that the provider
+replaces both the sender and the client with no Smtp:Host, and that core is untouched
+when no provider is set."
 git log -1 --stat | head -5
 ```

@@ -69,6 +69,11 @@ public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOp
                 when string.IsNullOrWhiteSpace(options.AzureCommunicationServices.ConnectionString):
                 failures.Add("EmailSender:AzureCommunicationServices:ConnectionString is required when EmailSender:Provider is AzureCommunicationServices.");
                 break;
+            // Only the shape is checked here and the value is never echoed; a typo would otherwise surface as a failed send.
+            case EmailProviderKind.AzureCommunicationServices
+                when !Providers.AzureCommunicationServices.AcsProvider.TryParse(options.AzureCommunicationServices.ConnectionString, out _, out _):
+                failures.Add("EmailSender:AzureCommunicationServices:ConnectionString is not a valid Azure Communication Services connection string (an https endpoint on communication.azure.com, .us or .cn, and a base64 accesskey).");
+                break;
             case EmailProviderKind.GovUkNotify:
                 ValidateNotify(options.GovUkNotify, failures);
                 break;

@@ -12,10 +12,6 @@ namespace Umbraco.Community.EmailSender.Providers.GovUkNotify;
 /// </summary>
 internal static partial class NotifyBodyFormatter
 {
-    // Private-use markers stand in for the generated links while the rest of the text is cleaned.
-    private const char LinkStart = '\uE000';
-    private const char LinkEnd = '\uE001';
-
     /// <summary>A plain-text body: only the link syntax is neutralised.</summary>
     public static string FromText(string text) => NeutraliseBrackets(text);
 
@@ -26,24 +22,34 @@ internal static partial class NotifyBodyFormatter
             return string.Empty;
         }
 
-        var links = new List<string>();
-        var text = Dropped().Replace(html.Replace(LinkStart, ' ').Replace(LinkEnd, ' '), " ");
-        text = Anchor().Replace(text, m =>
+        // Each stretch of text between anchors is cleaned on its own and the generated links are appended afterwards, so
+        // no placeholder ever passes through the entity decode: a visitor's text could otherwise spell one (&#xE000;0&#xE001;).
+        var source = Dropped().Replace(html, " ");
+        var builder = new System.Text.StringBuilder(source.Length);
+        var last = 0;
+        foreach (Match anchor in Anchor().Matches(source))
         {
-            links.Add(AnchorToMarkdown(m));
-            return $"{LinkStart}{links.Count - 1}{LinkEnd}";
-        });
-        text = LineBreak().Replace(text, "\n");
-        text = Paragraph().Replace(text, "\n\n");
-        text = AnyTag().Replace(text, string.Empty);
-        text = WebUtility.HtmlDecode(text);
-        text = ControlChars().Replace(text, " ");
-        text = NeutraliseBrackets(text);
-        text = Marker().Replace(text, m => links[int.Parse(m.Groups["i"].Value, System.Globalization.CultureInfo.InvariantCulture)]);
+            builder.Append(CleanSegment(source[last..anchor.Index]));
+            builder.Append(AnchorToMarkdown(anchor));
+            last = anchor.Index + anchor.Length;
+        }
+
+        builder.Append(CleanSegment(source[last..]));
+        var text = builder.ToString();
         text = Spaces().Replace(text, " ");
         text = SpaceAroundNewline().Replace(text, "\n");
         text = ManyNewlines().Replace(text, "\n\n");
         return text.Trim();
+    }
+
+    private static string CleanSegment(string segment)
+    {
+        var text = LineBreak().Replace(segment, "\n");
+        text = Paragraph().Replace(text, "\n\n");
+        text = AnyTag().Replace(text, string.Empty);
+        text = WebUtility.HtmlDecode(text);
+        text = ControlChars().Replace(text, " ");
+        return NeutraliseBrackets(text);
     }
 
     private static string NeutraliseBrackets(string text) => text.Replace('[', '(').Replace(']', ')');
@@ -71,9 +77,6 @@ internal static partial class NotifyBodyFormatter
 
     [GeneratedRegex(@"<a\b[^>]*?\bhref\s*=\s*(?:""(?<u>[^""]*)""|'(?<u>[^']*)')[^>]*>(?<t>.*?)</a\s*>", RegexOptions.Singleline | RegexOptions.IgnoreCase, 1000)]
     private static partial Regex Anchor();
-
-    [GeneratedRegex("\uE000(?<i>[0-9]+)\uE001", RegexOptions.None, 1000)]
-    private static partial Regex Marker();
 
     [GeneratedRegex(@"<br\s*/?>", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex LineBreak();

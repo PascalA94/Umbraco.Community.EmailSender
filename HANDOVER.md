@@ -14,4 +14,5 @@
 - **Next session starts at:** Task 5.
 - **State (M3):** Tasks 6, 6b, 7 and 8 built: Postmark, ACS and GOV.UK Notify providers, the Email provider health check, leak tests and the docs. Both lines pass (unit 254 on 17, 252 on 18; integration 2/2). Not done: Task 9 (first CI run, Pascal), 10 (final review) and 11 (live exercise).
 - **Pascal, before the first release tag (security High from the M3 review):** create the GitHub environment `nuget` with you as required reviewer and tags limited to `release/*`; set Environment `nuget` on the nuget.org Trusted Publishing policy; add a tag ruleset on `refs/tags/release/*`. See `.github/REPO-SETUP.md` step 6.
-- **Next session starts at:** Task 10 once Task 9 is green.
+- **State (M4):** Task 10 done: final qa-reviewer and security-analyst reviews, no Critical or High. Important and Medium findings fixed with tests (unit 262 on 17, 260 on 18; integration 4/4 each). Task 9 CI was green before the fixes; the fixes have not run on GitHub. Not done: Task 11 (live exercise, needs provider credentials in user-secrets). The full handover is written after Task 11. See COMMITS-TODO.md for the Pascal-decides items and deferred minors.
+- **Next session starts at:** Task 11.
