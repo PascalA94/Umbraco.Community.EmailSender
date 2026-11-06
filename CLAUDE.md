@@ -6,8 +6,6 @@ Design `docs/design.md`, plan `docs/plan.md`, spikes `docs/spikes.md`, where wor
 
 **Never commit, push or publish.** Pascal commits, pushes, tags and releases.
 
-Token rules and the 14 CI rules: `~/Documents/Projects/Umbraco Packages/README.md`, sections "Token rules" and "Build approach > CI and GitHub rules". (Delete this line before the repo goes public.)
-
 ## Lines and versions
 
 - One branch (`main`) builds both lines. `UmbracoMajor` (`17` or `18`, default `18`; `Directory.Build.props`) selects the CMS range (`[17.8.0, 18.0.0)` or `[18.3.0, 19.0.0)`), the `UMBRACO_17` / `UMBRACO_18` define, the lock file (`packages.<line>.lock.json`) and the version prefix. `eng/lines.txt` lists the lines.
@@ -38,6 +36,17 @@ dotnet dev-certs https && dotnet run --project demo/Umbraco.Community.EmailSende
 - Squash-merge, tag `release/<minor>.<patch>[-suffix]` on the merge commit; `publish.yml` publishes both lines with Trusted Publishing. Then `gh release create` for each line, and mark the newest Umbraco line's release as Latest.
 - Stable from the first real public release unless the API is still moving (`.github/REPO-SETUP.md` step 10); after that, no breaking changes within a major.
 - "Done" means green on GitHub. The first CI run is its own step with Pascal.
+
+## Behaviours to preserve
+
+- `EmailSender:Provider` unset: the composer registers nothing and core SMTP is untouched.
+- Provider set: **both** `IEmailSender` and `IEmailSenderClient` are replaced. Core's `EmailSender` returns before calling the client unless `Smtp:Host` or a pickup folder is set, so replacing the client alone would hide invites on a site with no SMTP host (`docs/design.md` 4.1).
+- Never log, or put in exception text, health-check text or `ToString()`: API keys, connection strings, recipient addresses, subjects, bodies, provider response text. Provider errors carry the HTTP status and a numeric code or class name only. `LeakTests` covers every provider and failure path; add a provider to its theory.
+- `EmailSendException` has a null `InnerException`. Unexpected exceptions are wrapped by type name only.
+- HTTP clients follow no redirects and redact logged headers. The ACS host allow-list has no config override.
+- No statics, no network calls at start-up (providers are singletons over `IHttpClientFactory` and `IOptionsMonitor`). The health check looks the provider up lazily because health checks are discovered even when no provider is registered.
+- GOV.UK Notify: one template (`((subject))`, `((body))`), one request per recipient, no attachments, Cc or Bcc, no From.
+- Config keys, aliases, HttpClient names and the health-check GUID are permanent.
 
 ## Keep
 

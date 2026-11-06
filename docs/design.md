@@ -7,7 +7,7 @@
 | Size | S, about 5-8 h agent time (4-6 h plus 1-2 h for the second line) |
 | Lines | **Both from the start** (Pascal, 2026-11-04: client sites are on v17 LTS): `17.x` on CMS `[17.8.0, 18.0.0)` and `18.x` on `[18.3.0, 19.0.0)`, one codebase, both packed from one commit |
 | Status | Draft design, 2026-11-04. Nothing built |
-| Inputs | `scope.md`, `../README.md` (floors, CI and GitHub rules, Build approach), `~/.claude/references/umbraco-pitfalls.md`, `../01-archived-users/` (house style) |
+| Inputs | the scope note, the portfolio rules (floors, CI and GitHub rules, Build approach), the Umbraco pitfalls list and an earlier package as house style (all private) |
 
 Tags: **[verified]** read this session at the linked source (Umbraco-CMS `release-18.3.0` unless stated); **[unverified]** recalled or inferred, check while building; **[DATED]** true on 2026-11-04 and likely to move.
 

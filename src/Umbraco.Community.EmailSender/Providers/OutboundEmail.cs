@@ -29,12 +29,21 @@ internal sealed record OutboundEmail(
         string? smtpFrom,
         TimeSpan? expires,
         long maxAttachmentBytes,
-        TimeProvider clock)
+        TimeProvider clock,
+        bool fromRequired = true)
     {
         // Error text never carries an address, subject or file name: addresses are personal data.
-        string from = FirstNonBlank(message.From, optionsFrom, smtpFrom)
-            ?? throw new EmailSendException("No From address. Set EmailSender:From or Umbraco:CMS:Global:Smtp:From.");
-        if (!TryNormalise(from, keepDisplayName: true, out from))
+        string? from = FirstNonBlank(message.From, optionsFrom, smtpFrom);
+        if (from is null && fromRequired)
+        {
+            throw new EmailSendException("No From address. Set EmailSender:From or Umbraco:CMS:Global:Smtp:From.");
+        }
+
+        if (from is null)
+        {
+            from = string.Empty;
+        }
+        else if (!TryNormalise(from, keepDisplayName: true, out from))
         {
             throw new EmailSendException("The From address is not a valid email address.");
         }

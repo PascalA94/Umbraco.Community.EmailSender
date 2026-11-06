@@ -9,6 +9,11 @@ internal interface IEmailProvider
     string Name { get; }
 
     /// <exception cref="EmailSendException">The provider refused the email or could not be reached.</exception>
+    /// <summary>
+    /// False when the provider sends from an address fixed in its own service (GOV.UK Notify), so no From is needed.
+    /// </summary>
+    bool UsesFromAddress => true;
+
     Task SendAsync(OutboundEmail email, CancellationToken ct);
 
     Task<HealthCheckStatus> CheckAsync(CancellationToken ct);
