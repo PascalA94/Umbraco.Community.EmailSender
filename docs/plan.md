@@ -8,9 +8,9 @@
 
 **Tech Stack:** .NET 10, `Umbraco.Cms.Infrastructure` `[17.8.0, 18.0.0)` and `[18.3.0, 19.0.0)`, `Azure.Communication.Email`, xUnit, NSubstitute, `Microsoft.Extensions.Diagnostics.Testing` (`FakeLogger`), GitHub Actions, gitleaks, osv-scanner, CodeQL.
 
-**Spec:** `/Users/tpxi676/Documents/Projects/Umbraco Packages/15-http-email-sender/design.md` (copied to `docs/design.md`). Portfolio rules: `../README.md` ("CI and GitHub rules" wins over this plan). Pitfalls: `~/.claude/references/umbraco-pitfalls.md`.
+**Spec:** `docs/design.md`. Portfolio CI and GitHub rules (private) win over this plan.
 
-**Repo:** `~/Projects/Umbraco.Community.EmailSender`. `SRC` = `src/Umbraco.Community.EmailSender`, `TESTS` = `tests/Umbraco.Community.EmailSender.Tests`.
+**Repo:** `PascalA94/Umbraco.Community.EmailSender`. `SRC` = `src/Umbraco.Community.EmailSender`, `TESTS` = `tests/Umbraco.Community.EmailSender.Tests`.
 
 ## Global Constraints
 
@@ -53,7 +53,7 @@
 - [ ] **Step 1 (Pascal):** create the empty **public** repo `PascalA94/Umbraco.Community.EmailSender` (no README, no licence).
   - Set About: description, NuGet link, topics `umbraco`, `umbracopackage`, `dotnet`, `email`, `postmark`, `azure-communication-services`.
   - Turn on secret scanning with push protection, CodeQL default setup, and squash-merge only.
-- [ ] **Step 2:** `gh repo clone PascalA94/Umbraco.Community.EmailSender ~/Projects/Umbraco.Community.EmailSender`. Confirm `git config user.email` prints `5427750+PascalA94@users.noreply.github.com`, and don't change it. Copy only `design.md` and `plan.md` into `docs/`, and start `docs/spikes.md`. Expected: `ls docs` shows `design.md plan.md spikes.md`.
+- [ ] **Step 2:** `gh repo clone PascalA94/Umbraco.Community.EmailSender`. Confirm `git config user.email` is the GitHub noreply address, and don't change it. Copy only `design.md` and `plan.md` into `docs/`, and start `docs/spikes.md`. Expected: `ls docs` shows `design.md plan.md spikes.md`.
 - [ ] **Step 3:** write `Directory.Build.props`, modelled on Jira's `AutomateMajor` switch:
   - `RestorePackagesWithLockFile=true`;
   - `UmbracoMajor` (`17` or `18`, default `18`), setting `DefineConstants` `UMBRACO_$(UmbracoMajor)`, `UmbracoRange`, `NuGetLockFilePath` and the version prefix;
@@ -225,8 +225,8 @@ README rule 14: done means green on GitHub, not just locally. Plan time for seve
 
 ### Task 10: Final whole-branch review
 
-- [ ] **Step 1:** dispatch `qa-reviewer` (fresh context, model `opus`) with the branch diff, `docs/*` and `~/.claude/references/umbraco-pitfalls.md`. Ask for findings by severity against Global Constraints, Review Focus and spec 3.4.
-- [ ] **Step 2:** save the verdict to `~/Documents/Projects/Umbraco Packages/15-http-email-sender/reviews/` (private). Fix blocking findings under the owning task's tests, then run `dotnet test`. Expected: `Failed: 0`, CI green.
+- [ ] **Step 1:** dispatch `qa-reviewer` (fresh context, model `opus`) with the branch diff, `docs/*` and the Umbraco pitfalls list. Ask for findings by severity against Global Constraints, Review Focus and spec 3.4.
+- [ ] **Step 2:** keep the verdict outside the repo. Fix blocking findings under the owning task's tests, then run `dotnet test`. Expected: `Failed: 0`, CI green.
 - [ ] **Checkpoint (Pascal commits):** `fix: final review findings`
 
 ### Task 11: Exercise it for real, on 17 and 18, then release

@@ -6,8 +6,6 @@ Design `docs/design.md`, plan `docs/plan.md`, spikes `docs/spikes.md`, where wor
 
 **Never commit, push or publish.** Pascal commits, pushes, tags and releases.
 
-Token rules and the 14 CI rules: `~/Documents/Projects/Umbraco Packages/README.md`, sections "Token rules" and "Build approach > CI and GitHub rules". (Delete this line before the repo goes public.)
-
 ## Lines and versions
 
 - One branch (`main`) builds both lines. `UmbracoMajor` (`17` or `18`, default `18`; `Directory.Build.props`) selects the CMS range (`[17.8.0, 18.0.0)` or `[18.3.0, 19.0.0)`), the `UMBRACO_17` / `UMBRACO_18` define, the lock file (`packages.<line>.lock.json`) and the version prefix. `eng/lines.txt` lists the lines.
