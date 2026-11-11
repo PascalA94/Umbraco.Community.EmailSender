@@ -13,6 +13,15 @@
     "Url": "https://github.com/PascalA94",
     "ImageUrl": "https://github.com/PascalA94.png"
   },
-  "Screenshots": [],
+  "Screenshots": [
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/PascalA94/Umbraco.Community.EmailSender/main/assets/screenshots/screenshot-01-health-check-passing.png",
+      "Caption": "Settings > Health Check > Services: the Email provider check passes with Postmark while Umbraco's SMTP check reports no SMTP host, so email goes out through the API alone."
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/PascalA94/Umbraco.Community.EmailSender/main/assets/screenshots/screenshot-02-health-check-rejected-token.png",
+      "Caption": "The same check when the provider rejects the credentials: it names the provider and the problem and never shows the token."
+    }
+  ],
   "Tags": ["umbraco", "umbraco-marketplace", "email", "smtp", "azure-communication-services", "postmark", "gov-uk-notify", "transactional-email"]
 }

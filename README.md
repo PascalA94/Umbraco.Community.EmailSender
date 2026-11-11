@@ -7,6 +7,8 @@ Send every Umbraco email through an HTTP API (Azure Communication Services, Post
 [![NuGet downloads](https://img.shields.io/nuget/dt/Umbraco.Community.EmailSender)](https://www.nuget.org/packages/Umbraco.Community.EmailSender)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](https://github.com/PascalA94/Umbraco.Community.EmailSender/blob/main/LICENSE)
 
+![Umbraco Settings > Health Check > Services showing the Email provider check passing with Postmark](https://raw.githubusercontent.com/PascalA94/Umbraco.Community.EmailSender/main/assets/screenshots/screenshot-01-health-check-passing.png)
+
 A community package, not made or supported by Umbraco HQ. Requires Umbraco 17 (17.8.0 or later) or Umbraco 18 (18.3.0 or later), on .NET 10.
 
 ## Compatibility
