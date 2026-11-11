@@ -16,6 +16,15 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 
 - [x] Task 9: CI green on GitHub (Build and Test and Release checks, run by Pascal)
 - [x] Task 10 checkpoint: `fix: final review findings`
+- [x] M5: icon, screenshots and GitHub repo settings (PR #1 merged 2026-11-11)
+- [ ] Task 11: live exercise on 17 and 18
+
+## Paused here (2026-11-11, M5: presentation and repo settings)
+
+Milestone: PR #1 merged to `main`, all seven checks green, so the M4 fixes have run on GitHub. Icon and two screenshots added and wired (REPO-SETUP step 9). GitHub settings for steps 3 to 7 applied: `nuget` environment, `release tags` and `main` rulesets, security features, CodeQL, squash-only merging.
+Next task: **Task 11 (live exercise on 17 and 18)**, still needing Postmark, ACS and Notify credentials in the demo's user-secrets.
+Open before the first tag: nuget.org Trusted Publishing policy; dismiss the CodeQL `cs/web/missing-token-validation` false positive; alpha or stable; `build/check-vulnerable.sh` and `build/check-release-version.sh`; the Release checks run by hand.
+Still undecided (Pascal): whether to untrack `HANDOVER.md` and `COMMITS-TODO.md` from the public repo.
 
 ## Paused here (2026-11-06, M4: Task 10 final review)
 
@@ -26,7 +35,7 @@ Next task: **Task 11 (live exercise on 17 and 18)**. Needs from Pascal, in user-
 Pascal decides (not blocking):
 1. Local paths (OS username, a private review folder path) remain in the git history of the already-public repo: accept, or rewrite before the first release.
 2. `HANDOVER.md` and `COMMITS-TODO.md` are tracked in the public repo and list open security gaps; CLAUDE.md says no reviews in the repo. Consider untracking both.
-3. The `nuget` environment does not exist yet (0 environments): do REPO-SETUP step 6 before pushing any `release/*` tag.
+3. The `nuget` environment did not exist when this was written; it was created on 2026-11-11 (see M5). The nuget.org Trusted Publishing policy is still to do.
 Deferred minors (M4):
 - QA: `NamedClient_RedactsAllLoggedHeaders` (Acs and Postmark tests) is vacuous and ACS is not in the real-pipeline leak test; `PackageConstantsTests.Composer_can_be_constructed` cannot fail; public leftovers (`AppPluginsFolder`, `AliasPrefix`, `EmailSendException(string, Exception?)`, public validator and parser); docs say UMBRACO_17 is only the `SendAsync(EmailMessage)` overload but it also holds two obsolete `IEmailSender` overloads (CLAUDE.md, Directory.Build.props, design section 2); `HttpApiEmailSenderClient` reads `CurrentValue` outside its try.
 - Security: strip Cf, Zl and Zp characters in `SafeFileName` and subject (RTLO); no scheduled vulnerability scan (add a cron to build.yml); unused `GHSA-6ffg-mjg7-585x` ignore in osv-scanner.toml; README should warn that Postmark Activity keeps invite and reset links; pin the SQL Server image by digest; `security-events: write` on the osv job.

@@ -2,6 +2,8 @@
 
 Do these in order, before the first push that runs Actions.
 
+> Status 2026-11-11: steps 3 to 7 and the presentation items in step 9 are applied on GitHub. Still open: the nuget.org Trusted Publishing policy (step 6) and dismissing the CodeQL false positive (step 5).
+
 1. **Pre-public checks:** also scrub local paths and private file names from `docs/design.md` (header table) and `docs/plan.md` (spec path, repo path, review folder, clone command). `bash build/gitleaks.sh ""` over staged content, and `git log -p | grep` for local paths. Delete `src/Umbraco.Community.EmailSender/CredentialHelper/README.md` if it names a local path, and the "Token rules" line in `CLAUDE.md` (it names a local path).
 2. **Create the repo and make it public** (private repos get limited free minutes and the queue stalls):
    `gh repo create PascalA94/Umbraco.Community.EmailSender --public --source . --disable-wiki`
