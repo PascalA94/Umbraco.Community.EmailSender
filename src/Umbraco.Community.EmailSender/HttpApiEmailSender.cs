@@ -59,7 +59,8 @@ internal sealed class HttpApiEmailSender : IEmailSender
 
             if (notification.IsHandled)
             {
-                _logger.LogDebug("An email of type {EmailType} was handled by a notification handler", emailType);
+                // emailType is caller-supplied, so it is not logged (CodeQL cs/exposure-of-sensitive-information).
+                _logger.LogDebug("An email was handled by a notification handler");
                 return;
             }
         }
