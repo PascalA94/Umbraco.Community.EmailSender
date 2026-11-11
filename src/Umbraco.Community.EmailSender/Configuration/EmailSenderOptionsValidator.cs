@@ -9,6 +9,29 @@ public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOp
     internal const int MaxTimeoutSeconds = 300;
     internal const long MaxAttachmentBytesLimit = 50 * 1024 * 1024;
 
+    private static void ValidateNotify(NotifyOptions notify, List<string> failures)
+    {
+        if (string.IsNullOrWhiteSpace(notify.ApiKey))
+        {
+            failures.Add("EmailSender:GovUkNotify:ApiKey is required when EmailSender:Provider is GovUkNotify.");
+        }
+        else if (!Providers.GovUkNotify.NotifyApiKey.TryParse(notify.ApiKey, out _, out _))
+        {
+            // The value is never echoed: a mistyped key still looks like a secret. A trailing newline is the usual cause.
+            failures.Add("EmailSender:GovUkNotify:ApiKey is not a GOV.UK Notify API key (a trailing newline or a truncated key?).");
+        }
+
+        if (!Guid.TryParseExact(notify.EmailTemplateId?.Trim(), "D", out _))
+        {
+            failures.Add("EmailSender:GovUkNotify:EmailTemplateId must be the template's id (a GUID).");
+        }
+
+        if (!string.IsNullOrWhiteSpace(notify.ReplyToId) && !Guid.TryParseExact(notify.ReplyToId.Trim(), "D", out _))
+        {
+            failures.Add("EmailSender:GovUkNotify:ReplyToId must be a reply-to address id (a GUID) or left empty.");
+        }
+    }
+
     public ValidateOptionsResult Validate(string? name, EmailSenderOptions options)
     {
         if (options.Provider is null)
@@ -45,6 +68,14 @@ public sealed class EmailSenderOptionsValidator : IValidateOptions<EmailSenderOp
             case EmailProviderKind.AzureCommunicationServices
                 when string.IsNullOrWhiteSpace(options.AzureCommunicationServices.ConnectionString):
                 failures.Add("EmailSender:AzureCommunicationServices:ConnectionString is required when EmailSender:Provider is AzureCommunicationServices.");
+                break;
+            // Only the shape is checked here and the value is never echoed; a typo would otherwise surface as a failed send.
+            case EmailProviderKind.AzureCommunicationServices
+                when !Providers.AzureCommunicationServices.AcsProvider.TryParse(options.AzureCommunicationServices.ConnectionString, out _, out _):
+                failures.Add("EmailSender:AzureCommunicationServices:ConnectionString is not a valid Azure Communication Services connection string (an https endpoint on communication.azure.com, .us or .cn, and a base64 accesskey).");
+                break;
+            case EmailProviderKind.GovUkNotify:
+                ValidateNotify(options.GovUkNotify, failures);
                 break;
         }
 

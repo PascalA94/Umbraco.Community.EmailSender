@@ -31,6 +31,33 @@ public class OptionsTests
         Assert.Contains("EmailSender:AzureCommunicationServices:ConnectionString", result.FailureMessage);
     }
 
+    [Theory]
+    [InlineData("endpoint=https://x.example.com/;accesskey=U0VOVElORUw=")] // not an ACS host
+    [InlineData("endpoint=http://x.communication.azure.com/;accesskey=U0VOVElORUw=")] // not https
+    [InlineData("endpoint=https://x.communication.azure.com/;accesskey=not base64!")]
+    [InlineData("just-some-text")]
+    public void MalformedAcsConnectionString_FailsAtStartUp_WithoutEchoingIt(string connectionString)
+    {
+        var options = new EmailSenderOptions { Provider = EmailProviderKind.AzureCommunicationServices };
+        options.AzureCommunicationServices.ConnectionString = connectionString;
+
+        var result = Validate(options);
+
+        Assert.True(result.Failed);
+        Assert.Contains("EmailSender:AzureCommunicationServices:ConnectionString", result.FailureMessage);
+        Assert.DoesNotContain("U0VOVElORUw=", result.FailureMessage);
+        Assert.DoesNotContain("x.example.com", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ValidAcsConnectionString_Succeeds()
+    {
+        var options = new EmailSenderOptions { Provider = EmailProviderKind.AzureCommunicationServices };
+        options.AzureCommunicationServices.ConnectionString = "endpoint=https://x.communication.azure.com/;accesskey=U0VOVElORUw="; // gitleaks:allow
+
+        Assert.True(Validate(options).Succeeded);
+    }
+
     [Fact]
     public void SecretPresent_Succeeds()
     {

@@ -35,6 +35,14 @@ public class OutboundEmailTests
         => Assert.Equal(expected, Create(Message(from: message), options, smtp).From);
 
     [Fact]
+    public void From_NotRequired_AllowsNoneAndStaysEmpty()
+        => Assert.Equal(string.Empty, OutboundEmail.Create(Message(from: null), null, null, null, Cap, Clock, fromRequired: false).From);
+
+    [Fact]
+    public void From_NotRequired_StillUsesAFallbackWhenOneExists()
+        => Assert.Equal("opt@example.test", OutboundEmail.Create(Message(from: null), "opt@example.test", null, null, Cap, Clock, fromRequired: false).From);
+
+    [Fact]
     public void From_NoneConfigured_NamesBothKeys()
     {
         var ex = Assert.Throws<EmailSendException>(() => Create(Message(from: null)));

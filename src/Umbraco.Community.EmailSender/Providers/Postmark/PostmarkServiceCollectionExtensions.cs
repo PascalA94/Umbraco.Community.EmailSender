@@ -14,8 +14,9 @@ internal static class PostmarkServiceCollectionExtensions
                 // PostmarkProvider enforces EmailSender:TimeoutSeconds itself.
                 client.Timeout = Timeout.InfiniteTimeSpan;
             })
-            // Factory logging prints header values at Trace; the server token must never reach a log.
-            .RedactLoggedHeaders(_ => true)
+            // The factory logs headers at Trace: the rendered text is redacted but the structured state keeps the raw value, so a
+            // structured log sink would receive the credential. This package logs for itself (counts and ids only).
+            .RemoveAllLoggers()
             // A redirect would carry the server token to another host, so none is followed.
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 

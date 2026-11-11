@@ -11,8 +11,9 @@ internal static class AcsServiceCollectionExtensions
         // (infinite handler lifetime) nor pin DNS forever (pooled connections expire).
         services.AddHttpClient(AcsProvider.ClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
             .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
-            // Factory logging prints header values at Trace, and the signed Authorization header is one.
-            .RedactLoggedHeaders(_ => true)
+            // The factory logs headers at Trace: the rendered text is redacted but the structured state keeps the raw value, so a
+            // structured log sink would receive the signed Authorization header. This package logs for itself.
+            .RemoveAllLoggers()
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 AllowAutoRedirect = false,
