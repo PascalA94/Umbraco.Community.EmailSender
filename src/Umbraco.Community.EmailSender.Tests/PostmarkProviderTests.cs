@@ -9,6 +9,7 @@ using NSubstitute;
 using Umbraco.Cms.Core.HealthChecks;
 using Umbraco.Community.EmailSender.Configuration;
 using Umbraco.Community.EmailSender.Providers;
+using Umbraco.Community.EmailSender.Providers.Pipeline;
 using Umbraco.Community.EmailSender.Providers.Postmark;
 
 namespace Umbraco.Community.EmailSender.Tests;
@@ -21,20 +22,20 @@ public class PostmarkProviderTests
     {
         public Recorder Handler { get; }
         public FakeTimeProvider Clock { get; } = new(DateTimeOffset.Parse("2026-11-04T10:00:00Z"));
-        public FakeLogger<PostmarkProvider> Logger { get; } = new();
-        public PostmarkProvider Provider { get; }
+        public FakeLogger<PipelineEmailProvider> Logger { get; } = new();
+        public PipelineEmailProvider Provider { get; }
 
         public Rig(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? respond = null, EmailSenderOptions? options = null)
         {
             Handler = new Recorder(respond ?? ((_, _) => Task.FromResult(Json(HttpStatusCode.OK, """{"ErrorCode":0,"Message":"OK","MessageID":"0a129aee-e1cd-480d-b08d-4f48548ff48d"}"""))));
             var factory = Substitute.For<IHttpClientFactory>();
-            factory.CreateClient(PostmarkProvider.ClientName)
+            factory.CreateClient(PostmarkMapper.ClientName)
                 .Returns(_ => new HttpClient(Handler, disposeHandler: false) { BaseAddress = new Uri("https://api.postmarkapp.com/") });
             var current = options ?? new EmailSenderOptions { Provider = EmailProviderKind.Postmark };
             current.Postmark.ServerToken ??= Token;
             var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
             monitor.CurrentValue.Returns(current);
-            Provider = new PostmarkProvider(factory, monitor, Clock, Logger);
+            Provider = new PipelineEmailProvider(new PostmarkMapper(), factory, monitor, Clock, Logger);
         }
     }
 
@@ -159,9 +160,10 @@ public class PostmarkProviderTests
     }
 
     [Fact]
-    public async Task Errors_ReadAtMostFourKilobytesOfBody()
+    public async Task Errors_ReadAtMostSixtyFourKilobytesOfBody()
     {
-        var padding = new string(' ', 5000);
+        // The shared pipeline reads 64 KB (design 9.2 step 4); a code past the cap is never seen.
+        var padding = new string(' ', 70000);
         var rig = new Rig((_, _) => Task.FromResult(Json(HttpStatusCode.UnprocessableEntity, padding + """{"ErrorCode":300}""")));
 
         var ex = await Assert.ThrowsAsync<EmailSendException>(() => rig.Provider.SendAsync(Email(), CancellationToken.None));
@@ -241,18 +243,19 @@ public class PostmarkProviderTests
     }
 
     [Fact]
-    public void NamedClient_HasPostmarkBaseAddressAndNoRedirects()
+    public void NamedClient_HasNoBaseAddressAndNoRedirects()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddPostmarkProvider();
         using var provider = services.BuildServiceProvider();
 
-        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(PostmarkProvider.ClientName);
-        Assert.Equal(new Uri("https://api.postmarkapp.com/"), client.BaseAddress);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(PostmarkMapper.ClientName);
+        // The mapper builds an absolute URI per send (design 9.2, "HTTP clients").
+        Assert.Null(client.BaseAddress);
         Assert.False(client.DefaultRequestHeaders.Contains("X-Postmark-Server-Token"));
 
-        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(PostmarkProvider.ClientName);
+        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(PostmarkMapper.ClientName);
         while (handler is DelegatingHandler delegating)
         {
             handler = delegating.InnerHandler;
@@ -360,7 +363,7 @@ public class PostmarkProviderTests
         services.AddPostmarkProvider();
         using var provider = services.BuildServiceProvider();
 
-        var factoryOptions = provider.GetRequiredService<IOptionsMonitor<Microsoft.Extensions.Http.HttpClientFactoryOptions>>().Get(PostmarkProvider.ClientName);
+        var factoryOptions = provider.GetRequiredService<IOptionsMonitor<Microsoft.Extensions.Http.HttpClientFactoryOptions>>().Get(PostmarkMapper.ClientName);
 
         Assert.True(factoryOptions.ShouldRedactHeaderValue("X-Postmark-Server-Token"));
     }

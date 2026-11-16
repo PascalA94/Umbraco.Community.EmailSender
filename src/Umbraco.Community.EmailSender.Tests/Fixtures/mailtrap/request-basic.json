@@ -1,0 +1,6 @@
+{
+  "from": {"email": "sender@example.com"},
+  "to": [{"email": "recipient@example.com"}],
+  "subject": "Hello from Mailtrap",
+  "text": "Welcome to Mailtrap!"
+}

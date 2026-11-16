@@ -1,0 +1,7 @@
+{
+  "from": "Acme <onboarding@resend.dev>",
+  "to": ["delivered@resend.dev"],
+  "subject": "hello world",
+  "html": "<p>it works!</p>",
+  "text": "it works!"
+}

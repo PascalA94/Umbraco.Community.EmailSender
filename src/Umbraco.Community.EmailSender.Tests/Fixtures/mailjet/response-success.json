@@ -1,0 +1,26 @@
+{
+  "Messages": [
+    {
+      "Status": "success",
+      "To": [
+        {
+          "Email": "passenger1@mailjet.com",
+          "MessageUUID": "123",
+          "MessageID": 20547681647433000,
+          "MessageHref": "https://api.mailjet.com/v3/message/20547681647433000"
+        }
+      ]
+    },
+    {
+      "Status": "success",
+      "To": [
+        {
+          "Email": "passenger2@mailjet.com",
+          "MessageUUID": "124",
+          "MessageID": 20547681647433001,
+          "MessageHref": "https://api.mailjet.com/v3/message/20547681647433001"
+        }
+      ]
+    }
+  ]
+}

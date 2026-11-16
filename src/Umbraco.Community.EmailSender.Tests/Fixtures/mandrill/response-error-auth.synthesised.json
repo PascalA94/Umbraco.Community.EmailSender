@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "code": 401,
+  "name": "Invalid_Key",
+  "message": "<human-readable text not published>"
+}

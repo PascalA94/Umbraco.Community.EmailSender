@@ -1,0 +1,17 @@
+curl -s --user "api:$MAILGUN_API_KEY" \
+    https://api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages \
+    -F from='Excited User <postmaster@YOUR_DOMAIN_NAME>' \
+    -F to=recipient@example.com \
+    -F subject="Hello there!" \
+    -F text='Testing some Mailgun awesomeness!' \
+    -F attachment=@tps-report.txt \
+    -F attachment=@cover-letter.txt
+
+# inline image (same page, second example)
+curl -s --user "api:$MAILGUN_API_KEY" \
+    https://api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages \
+    -F from='Excited User <postmaster@YOUR_DOMAIN_NAME>' \
+    -F to=recipient@example.com \
+    -F subject="Hello there!" \
+    -F inline=@email.jpg \
+    --form-string html='<html><body><p>Hello from <img src="cid:email.jpg"/></p></body></html>'

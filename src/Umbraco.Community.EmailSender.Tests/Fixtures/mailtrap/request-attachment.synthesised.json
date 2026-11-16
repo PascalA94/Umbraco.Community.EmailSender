@@ -1,0 +1,15 @@
+{
+  "from": { "email": "sender@example.com", "name": "Sender Name" },
+  "to": [{ "email": "recipient@example.com" }],
+  "cc": [{ "email": "cc@example.com" }],
+  "bcc": [{ "email": "bcc@example.com" }],
+  "reply_to": { "email": "reply@example.com" },
+  "subject": "Report",
+  "html": "<p>See attached.</p><img src=\"cid:image001\">",
+  "text": "See attached.",
+  "headers": { "X-Message-Source": "api.example.com" },
+  "attachments": [
+    { "content": "dGVzdCBjb250ZW50", "filename": "readme.txt", "type": "text/plain", "disposition": "attachment" },
+    { "content": "dGVzdCBjb250ZW50", "filename": "logo.png", "type": "image/png", "disposition": "inline", "content_id": "image001" }
+  ]
+}

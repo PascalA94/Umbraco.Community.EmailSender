@@ -1,0 +1,4 @@
+{
+  "ErrorCode": 10,
+  "Message": "Request does not contain a valid Server or Account token, or the wrong token type was used for the endpoint."
+}

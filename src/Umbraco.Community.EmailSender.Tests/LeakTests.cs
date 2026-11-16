@@ -10,9 +10,8 @@ using Umbraco.Cms.Core.Configuration.Models;
 using Umbraco.Cms.Core.Models.Email;
 using Umbraco.Community.EmailSender.Configuration;
 using Umbraco.Community.EmailSender.Providers;
-using Umbraco.Community.EmailSender.Providers.AzureCommunicationServices;
-using Umbraco.Community.EmailSender.Providers.GovUkNotify;
-using Umbraco.Community.EmailSender.Providers.Postmark;
+using Umbraco.Community.EmailSender.Providers.Registry;
+using Microsoft.Extensions.Http;
 
 
 namespace Umbraco.Community.EmailSender.Tests;
@@ -57,7 +56,8 @@ public class LeakTests
     public static TheoryData<EmailProviderKind, Failure> Paths()
     {
         var data = new TheoryData<EmailProviderKind, Failure>();
-        foreach (var kind in Enum.GetValues<EmailProviderKind>())
+        // From the registry, so a new provider is swept the moment it is registered (design 9.5, registry guard).
+        foreach (var kind in ProviderRegistry.All.Select(d => d.Kind))
         {
             foreach (var failure in Enum.GetValues<Failure>())
             {
@@ -88,49 +88,45 @@ public class LeakTests
         return Recorder.Json(status, body);
     }
 
+    private static HttpResponseMessage WithRetryAfter(HttpResponseMessage response, string seconds)
+    {
+        response.Headers.TryAddWithoutValidation("Retry-After", seconds);
+        return response;
+    }
+
     private static Recorder Server(Failure failure) => new((request, _) => failure switch
     {
         Failure.NetworkException => throw new HttpRequestException($"{Address} {Subject} {PostmarkToken} SENTINEL-ECHO"),
         Failure.Unauthorized => Task.FromResult(Echo(request, HttpStatusCode.Unauthorized, false)),
         Failure.Forbidden => Task.FromResult(Echo(request, HttpStatusCode.Forbidden, false)),
         Failure.BadRequest => Task.FromResult(Echo(request, (HttpStatusCode)422, false)),
-        Failure.TooManyRequests => Task.FromResult(Echo(request, HttpStatusCode.TooManyRequests, false)),
+        // Retry-After past the 10-second ceiling: the pipeline fails at once instead of waiting on the fake clock.
+        Failure.TooManyRequests => Task.FromResult(WithRetryAfter(Echo(request, HttpStatusCode.TooManyRequests, false), "60")),
         Failure.MalformedBody => Task.FromResult(Echo(request, HttpStatusCode.InternalServerError, true)),
         _ => Task.FromResult(Echo(request, HttpStatusCode.InternalServerError, false)),
     });
 
-    private static (IEmailProvider Provider, Func<string> ProviderLog) Build(EmailProviderKind kind, EmailSenderOptions options, Recorder server)
+    /// <summary>
+    /// The provider exactly as the composer registers it (registry definition, real named client), with the server as the
+    /// primary handler of every client. The factory's own logging handlers stay in place.
+    /// </summary>
+    private static ServiceProvider Build(EmailProviderKind kind, EmailSenderOptions options, Recorder server)
     {
         var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
         monitor.CurrentValue.Returns(options);
-        var clock = new FakeTimeProvider(DateTimeOffset.Parse("2026-11-04T10:00:00Z"));
-        var factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(server, disposeHandler: false)
-        {
-            BaseAddress = kind switch
-            {
-                EmailProviderKind.Postmark => new Uri("https://api.postmarkapp.com/"),
-                EmailProviderKind.GovUkNotify => new Uri("https://api.notifications.service.gov.uk/"),
-                _ => null,
-            },
-        });
-
-        switch (kind)
-        {
-            case EmailProviderKind.Postmark:
-                var pm = new FakeLogger<PostmarkProvider>();
-                return (new PostmarkProvider(factory, monitor, clock, pm), () => Dump(pm));
-            case EmailProviderKind.GovUkNotify:
-                var notify = new FakeLogger<NotifyProvider>();
-                return (new NotifyProvider(factory, monitor, clock, notify), () => Dump(notify));
-            case EmailProviderKind.AzureCommunicationServices:
-                var acs = new FakeLogger<AcsProvider>();
-                return (new AcsProvider(factory, monitor, clock, acs), () => Dump(acs));
-            default:
-                // A new provider must be added here on purpose, never tested as ACS by accident.
-                throw new NotSupportedException($"Add {kind} to LeakTests.Build.");
-        }
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).AddFakeLogging());
+        services.AddSingleton<TimeProvider>(new FakeTimeProvider(DateTimeOffset.Parse("2026-11-04T10:00:00Z")));
+        services.AddSingleton(monitor);
+        ProviderRegistry.Get(kind).Register(services);
+        services.ConfigureAll<HttpClientFactoryOptions>(o => o.HttpMessageHandlerBuilderActions.Add(b => b.PrimaryHandler = server));
+        return services.BuildServiceProvider();
     }
+
+    private static string Dump(FakeLogCollector collector)
+        => string.Join(
+            Environment.NewLine,
+            collector.GetSnapshot().Select(r => $"{r.Category} {r.Message} {r.Exception} {string.Join(' ', r.Scopes)} {string.Join(' ', r.StructuredState?.Select(kv => kv.Value) ?? [])}"));
 
     private static EmailMessage Message(Failure failure)
     {
@@ -154,7 +150,8 @@ public class LeakTests
     public async Task NoSecretsOrRecipients_OnAnyFailurePath(EmailProviderKind kind, Failure failure)
     {
         var options = Options(kind);
-        var (provider, providerLog) = Build(kind, options, Server(failure));
+        await using var root = Build(kind, options, Server(failure));
+        var provider = root.GetRequiredService<IEmailProvider>();
         var clientLogger = new FakeLogger<HttpApiEmailSenderClient>();
         var globalSettings = Substitute.For<IOptionsMonitor<GlobalSettings>>();
         globalSettings.CurrentValue.Returns(new GlobalSettings());
@@ -169,10 +166,10 @@ public class LeakTests
         Assert.Null(ex.InnerException);
 
         // The Notify and ACS clients log through their own typed loggers; read those too.
-        observed.AppendLine(Dump(clientLogger));
+        observed.AppendLine(string.Join(Environment.NewLine, clientLogger.Collector.GetSnapshot().Select(r => $"{r.Message} {r.Exception} {string.Join(' ', r.StructuredState?.Select(kv => kv.Value) ?? [])}")));
         var health = await provider.CheckAsync(CancellationToken.None);
         observed.AppendLine(health.Message);
-        observed.AppendLine(providerLog());
+        observed.AppendLine(Dump(root.GetFakeLogCollector()));
         observed.AppendLine(options.ToString());
         observed.AppendLine(options.Postmark.ToString());
         observed.AppendLine(options.AzureCommunicationServices.ToString());
@@ -187,45 +184,26 @@ public class LeakTests
         }
     }
 
-    // The mocked factory above never runs IHttpClientFactory's own logging. This one does, at Trace, so it fails if a
-    // named client lets the factory log the header that carries the credential (its structured state holds the raw value).
+    public static TheoryData<EmailProviderKind> Kinds() => new(ProviderRegistry.All.Select(d => d.Kind));
+
+    // The factory logs request headers at Trace, and its structured state holds the raw value. This fails if any registered
+    // client lets the factory log the header that carries the credential.
     [Theory]
-    [InlineData(EmailProviderKind.Postmark)]
-    [InlineData(EmailProviderKind.GovUkNotify)]
+    [MemberData(nameof(Kinds))]
     public async Task RealHttpPipeline_LogsNoCredentialHeaderAtTrace(EmailProviderKind kind)
     {
-        var logs = new FakeLoggerProvider();
-        var services = new ServiceCollection();
-        services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).Services.AddSingleton<ILoggerProvider>(logs));
         var options = Options(kind);
-                var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
-        monitor.CurrentValue.Returns(options);
-        services.AddSingleton(monitor);
-        var server = new Recorder((_, _) => Task.FromResult(Recorder.Json(
-            kind == EmailProviderKind.Postmark ? HttpStatusCode.OK : HttpStatusCode.Created,
-            kind == EmailProviderKind.Postmark ? """{"ErrorCode":0,"MessageID":"0a129aee-e1cd-480d-b08d-4f48548ff48d"}""" : """{"id":"740e5834-3a29-46b4-9a6f-16142fde533a"}""")));
-        string clientName;
-        if (kind == EmailProviderKind.Postmark)
-        {
-            services.AddPostmarkProvider();
-            clientName = PostmarkProvider.ClientName;
-        }
-        else
-        {
-            services.AddNotifyProvider();
-            clientName = NotifyProvider.ClientName;
-        }
-
-        // Last registration wins, so the real handler pipeline (logging included) stays and only the socket is replaced.
-        services.AddHttpClient(clientName).ConfigurePrimaryHttpMessageHandler(() => server);
-        await using var root = services.BuildServiceProvider();
+        var profile = Conformance.Profiles.All.Single(p => p.Kind == kind);
+        var server = new Recorder((_, _) => Task.FromResult(Conformance.FakeProviderServer.Success(profile)));
+        await using var root = Build(kind, options, server);
 
         var provider = root.GetRequiredService<IEmailProvider>();
-        await provider.SendAsync(OutboundEmail.Create(Message(Failure.ServerError), null, "from@example.test", null, 1024, new FakeTimeProvider()), CancellationToken.None);
+        await provider.SendAsync(OutboundEmail.Create(Message(Failure.ServerError), null, "from@example.test", null, 1024, new FakeTimeProvider(), provider.UsesFromAddress), CancellationToken.None);
 
         Assert.Single(server.Calls);
-        var text = string.Join(Environment.NewLine, logs.Collector.GetSnapshot().Select(r => $"{r.Category} {r.Message} {string.Join(' ', r.StructuredState?.Select(kv => kv.Value) ?? [])}"));
-        Assert.NotEmpty(logs.Collector.GetSnapshot()); // the factory did log something: the assertion below is not vacuous
+        var logs = root.GetFakeLogCollector().GetSnapshot();
+        Assert.NotEmpty(logs); // something was logged: the assertion below is not vacuous
+        var text = Dump(root.GetFakeLogCollector());
         foreach (var sentinel in Sentinels)
         {
             Assert.DoesNotContain(sentinel, text, StringComparison.OrdinalIgnoreCase);
@@ -263,10 +241,5 @@ public class LeakTests
         Assert.DoesNotContain(PostmarkToken, ex.Message);
     }
 
-    private static string Dump(FakeLogger logger)
-        => string.Join(
-            Environment.NewLine,
-            logger.Collector.GetSnapshot().Select(r => $"{r.Category} {r.Message} {r.Exception} {string.Join(' ', r.Scopes)} {string.Join(' ', r.StructuredState?.Select(kv => kv.Value) ?? [])}"));
 
-    private static string Dump<T>(FakeLogger<T> logger) => Dump((FakeLogger)logger);
 }

@@ -1,0 +1,16 @@
+{
+  "to": [
+    "Jane Jones <jane@example.com>"
+  ],
+  "sender": "John Smith <john@example.com>",
+  "subject": "My Test Email",
+  "html_body": "<h1>Test <img src=\"cid:mypicture.jpg\" /></h1>",
+  "text_body": "Test",
+  "inlines": [
+    {
+      "filename": "mypicture.jpg",
+      "mimetype": "image/jpeg",
+      "url": "https://myserver.com/mypicture.jpg"
+    }
+  ]
+}

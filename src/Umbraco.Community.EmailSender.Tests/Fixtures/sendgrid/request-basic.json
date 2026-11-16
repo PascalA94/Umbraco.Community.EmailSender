@@ -1,0 +1,31 @@
+{
+  "personalizations": [
+    {
+      "to": [
+        {
+          "email": "john.doe@example.com",
+          "name": "John Doe"
+        }
+      ],
+      "subject": "Hello, World!"
+    }
+  ],
+  "content": [
+    {
+      "type": "text/plain",
+      "value": "Heya!"
+    },
+    {
+      "type": "text/html",
+      "value": "<p>Hello from Twilio SendGrid!</p>"
+    }
+  ],
+  "from": {
+    "email": "sam.smith@example.com",
+    "name": "Sam Smith"
+  },
+  "reply_to": {
+    "email": "sam.smith@example.com",
+    "name": "Sam Smith"
+  }
+}

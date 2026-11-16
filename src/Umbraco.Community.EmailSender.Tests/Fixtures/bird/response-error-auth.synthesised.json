@@ -1,0 +1,10 @@
+{
+  "error": {
+    "type": "auth_error",
+    "code": "E0xxxx",
+    "name": "Unauthorized",
+    "message": "Authentication required",
+    "doc_url": "https://bird.com/docs/api/errors",
+    "request_id": "req_example"
+  }
+}

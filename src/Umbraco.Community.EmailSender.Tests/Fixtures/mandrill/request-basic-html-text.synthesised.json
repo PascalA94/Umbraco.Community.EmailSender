@@ -1,0 +1,18 @@
+{
+  "key": "TEST-ONLY-NOT-A-SECRET",
+  "message": {
+    "from_email": "hello@example.com",
+    "from_name": "Example Sender",
+    "subject": "Hello World",
+    "html": "<p>Welcome to Mailchimp Transactional!</p>",
+    "text": "Welcome to Mailchimp Transactional!",
+    "to": [
+      { "email": "freddie@example.com", "name": "Freddie", "type": "to" },
+      { "email": "cc@example.com", "type": "cc" },
+      { "email": "bcc@example.com", "type": "bcc" }
+    ],
+    "headers": { "Reply-To": "reply@example.com", "X-Custom": "value" },
+    "track_opens": false,
+    "track_clicks": false
+  }
+}

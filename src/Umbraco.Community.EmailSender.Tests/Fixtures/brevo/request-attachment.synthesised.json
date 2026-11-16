@@ -1,0 +1,9 @@
+{
+  "sender": { "name": "Sender Name", "email": "sender@example.com" },
+  "to": [ { "email": "recipient@example.com", "name": "Recipient Name" } ],
+  "subject": "Attachment test",
+  "htmlContent": "<p>See attached.</p>",
+  "attachment": [
+    { "name": "hello.txt", "content": "SGVsbG8gd29ybGQ=" }
+  ]
+}

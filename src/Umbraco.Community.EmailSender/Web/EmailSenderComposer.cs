@@ -8,9 +8,7 @@ using Umbraco.Cms.Core.Mail;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Infrastructure.Mail.Interfaces;
 using Umbraco.Community.EmailSender.Configuration;
-using Umbraco.Community.EmailSender.Providers.AzureCommunicationServices;
-using Umbraco.Community.EmailSender.Providers.GovUkNotify;
-using Umbraco.Community.EmailSender.Providers.Postmark;
+using Umbraco.Community.EmailSender.Providers.Registry;
 using Umbraco.Extensions;
 
 namespace Umbraco.Community.EmailSender.Web;
@@ -41,18 +39,7 @@ public sealed class EmailSenderComposer : IComposer
         builder.Services.TryAddSingleton(TimeProvider.System);
 
         // The provider is chosen once here: a Provider change needs a restart (it also decides which services exist).
-        switch (kind)
-        {
-            case EmailProviderKind.Postmark:
-                builder.Services.AddPostmarkProvider();
-                break;
-            case EmailProviderKind.GovUkNotify:
-                builder.Services.AddNotifyProvider();
-                break;
-            case EmailProviderKind.AzureCommunicationServices:
-                builder.Services.AddAcsProvider();
-                break;
-        }
+        ProviderRegistry.Get(kind).Register(builder.Services);
 
         builder.AddNotificationAsyncHandler<UmbracoApplicationStartingNotification, SmtpOverlapStartupWarning>();
     }

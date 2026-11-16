@@ -1,0 +1,15 @@
+{
+  "sender": {
+    "name": "Sender Name",
+    "email": "sender@example.com"
+  },
+  "to": [
+    {
+      "email": "recipient@example.com",
+      "name": "Recipient Name"
+    }
+  ],
+  "htmlContent": "<!DOCTYPE html><html><body><h1>Confirm your email</h1><p>Please confirm your email address by clicking on the link below</p></body></html>",
+  "textContent": "Please confirm your email address by clicking on the link https://text.domain.com",
+  "subject": "Login Email confirmation"
+}

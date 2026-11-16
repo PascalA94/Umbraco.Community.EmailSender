@@ -1,0 +1,12 @@
+{
+  "from": {
+    "email": "onboarding@messagebird.dev",
+    "name": "Bird"
+  },
+  "to": [
+    "delivered@messagebird.dev"
+  ],
+  "subject": "Hello from Bird",
+  "html": "<p>My first Bird email.</p>",
+  "text": "My first Bird email."
+}

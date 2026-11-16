@@ -1,0 +1,6 @@
+{
+  "ErrorIdentifier": "06df1144-c6f3-4ca7-8885-7ec5d4344113",
+  "ErrorCode": "mj-0002",
+  "ErrorMessage": "Malformed JSON, please review the syntax and properties types.",
+  "StatusCode": 400
+}

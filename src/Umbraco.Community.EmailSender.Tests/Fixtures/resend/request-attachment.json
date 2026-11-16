@@ -1,0 +1,13 @@
+{
+  "from": "Acme <onboarding@resend.dev>",
+  "to": ["delivered@resend.dev"],
+  "subject": "Thank you for contacting us",
+  "html": "<p>Here is our <img src=\"cid:logo-image\"/> inline logo</p>",
+  "attachments": [
+    {
+      "content": "UmVzZW5kIGF0dGFjaG1lbnQgZXhhbXBsZS4gTmljZSBqb2Igc2VuZGluZyB0aGUgZW1haWwh",
+      "filename": "invoice.txt",
+      "content_id": "logo-image"
+    }
+  ]
+}

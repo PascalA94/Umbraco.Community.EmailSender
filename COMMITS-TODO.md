@@ -17,7 +17,27 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 9: CI green on GitHub (Build and Test and Release checks, run by Pascal)
 - [x] Task 10 checkpoint: `fix: final review findings`
 - [x] M5: icon, screenshots and GitHub repo settings (PR #1 merged 2026-11-11)
-- [ ] Task 11: live exercise on 17 and 18
+- [ ] Task 11: live exercise (narrowed to Postmark, moved to M10)
+- [x] Task 12 checkpoint: `chore: refresh docs and import provider fixtures`
+- [x] Task 13 checkpoint: `refactor: provider registry`
+- [x] Task 14 checkpoint: `feat: shared provider pipeline`
+- [x] Task 15 checkpoint: `feat: conformance suite; Postmark on the shared pipeline` (PostmarkProviderTests kept; no case deleted, two renamed to the 64 KB cap and no base address)
+- [x] Task 16 checkpoint: `feat: Notify and ACS in the conformance suite`
+
+## Paused here (2026-11-16, M6: shared pipeline and conformance suite)
+
+Milestone: Tasks 12 to 16 done. Workspace design and plan copied in verbatim; the path check printed nothing. 13 provider fixture folders imported and scrubbed (gitleaks clean). Provider registry; shared pipeline (`Providers/Pipeline/`: pre-checks, size cap, the design 9.2 retry table, one budget across attempts, 64 KB capped reads, one log line); conformance suite (C1 to C12, F1 to F15) with Postmark, Notify and ACS profiles; Postmark and Notify on the pipeline; ACS runs the shared pre-checks (50-recipient cap) and stays off pipeline retries; registry guard; `LeakTests` driven by the registry.
+Tests: `./scripts/test.sh` passes on both lines (unit 455 on 17, 453 on 18; integration 4/4 each). No new package. gitleaks clean over `src/`. CI has not run on this milestone.
+Reviews (uncommitted M6 diff against `405489c`): security-analyst (opus) no Critical, 1 High, 1 Medium, 3 Low, 2 Info; qa-reviewer (opus) no Critical, 1 Important, 5 Minor. Fixed with a failing test first:
+- High: a site's `ConfigureHttpClientDefaults` (Aspire resilience handler, Polly) would wrap provider clients and resend POSTs (duplicate invites). Every provider client now clears host handlers; tested for every provider and both registration orders.
+- Medium: a mapper could mark a possibly accepted send retryable. The pipeline now enforces the table; a mapper can only narrow it.
+- Important: the fake-clock test rigs advanced on wall time (ACS F5 flaked about 1 in 15). A new `SteppingClock` advances only when a send is waiting on a timer; 10 of 10 repeat runs clean.
+Rulings (summary): validation in per-provider classes; `IProviderMapper` gained `ClientName`, `UsesFromAddress` and `ReadHealth`; capabilities gained `ReplyToHint` and `ErrorCodeLabel`; `FromAddress`/`FromName` are computed from the normalised From; the Postmark and Notify clients have no base address (absolute URI per send); read cap 64 KB; four existing test cases adjusted (the 64 KB cap, no base address, and two Notify 429s moved from `RateLimitError` to the daily-limit class `TooManyRequestsError`, because a plain 429 now retries); ACS gets the shared success log line, a 401 hint and the shared 429 text; extra not-applicable entries for ACS (SDK path), each with a reason. Cost if wrong: small text or log-format changes before the first alpha.
+Q4 (shared cap of 50, no general fan-out) still stands on its default.
+Deferred minors (M6):
+- Security: `SafeId` admits address-shaped ids into the success log; ACS `SafeCode` and Notify `ErrorClass` use `$`, not `\z`; **no per-mapper allowed-host check on request URIs (do this before Bird, Mailgun or Graph build hosts from options)**; back-off computed twice on the idempotent connection-failure path; `AcceptedOutcome.Warning` is free text (make it constant before MailerSend).
+- QA: F15 never reaches the server for Notify; the Notify Reply-To warning is logged once per recipient; `Unreadable` on a non-2xx skips the retry table; no Notify test that `RateLimitError` retries; no test sweeps a waited retry whose response echoes secrets.
+Next task: **Task 17 (wave A: SendGrid), the start of M7.** Consider adding the allowed-host check first, since Mailgun is in that wave.
 
 ## Paused here (2026-11-11, M5: presentation and repo settings)
 
@@ -60,17 +80,22 @@ Deferred minors:
 
 ## Milestone commit
 
-Check `git status` first: only `src/`, `COMMITS-TODO.md` and `HANDOVER.md` should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs). No lock file changed in M4. Ignored `bin/`, `obj/` and schema files are fine.
+`main` has a ruleset, so this goes on a branch and a squash-merged PR. Check `git status` first: only `docs/design.md`, `docs/plan.md`, `docs/spikes.md`, `COMMITS-TODO.md` and `src/` should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs; `.superpowers/` is ignored). No lock file changed in M6.
 
 ```bash
+git switch -c feat/m6-shared-pipeline
 git add -A
-git commit -m "fix: final review findings
+git commit -m "feat: shared provider pipeline and conformance suite
 
-Notify body formatter no longer uses in-band link placeholders, so entity-encoded
-private-use characters in visitor text cannot forge or crash a link. A malformed
-Azure Communication Services connection string now fails at start-up, naming the key
-and never echoing the value. Adds booted-host integration tests that the provider
-replaces both the sender and the client with no Smtp:Host, and that core is untouched
-when no provider is set."
+Adds a provider registry and one send pipeline for every HTTP provider:
+pre-checks (50 recipients, per-provider caps, request size after encoding),
+the design 9.2 retry table (429, 420 and 503; 5xx only with an idempotency
+key), Retry-After with a 10-second ceiling, one timeout budget across all
+attempts, 64 KB capped reads and an allow-listed error code. Provider clients
+clear host-wide HttpClient handlers so a site's resilience policy cannot
+resend an invite. Postmark and GOV.UK Notify move onto the pipeline; ACS runs
+the shared pre-checks and keeps SDK retries off. Imports scrubbed provider
+fixtures and adds a conformance suite (C1-C12, F1-F15) with a registry guard
+and a registry-driven leak sweep."
 git log -1 --stat | head -5
 ```

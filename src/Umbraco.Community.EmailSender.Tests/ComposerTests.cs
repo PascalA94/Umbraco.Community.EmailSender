@@ -109,9 +109,9 @@ public class ComposerTests
     }
 
     [Theory]
-    [InlineData("Postmark", "EmailSender:Postmark:ServerToken", typeof(Umbraco.Community.EmailSender.Providers.Postmark.PostmarkProvider))]
+    [InlineData("Postmark", "EmailSender:Postmark:ServerToken", typeof(Umbraco.Community.EmailSender.Providers.Pipeline.PipelineEmailProvider))]
     [InlineData("AzureCommunicationServices", "EmailSender:AzureCommunicationServices:ConnectionString", typeof(Umbraco.Community.EmailSender.Providers.AzureCommunicationServices.AcsProvider))]
-    [InlineData("GovUkNotify", "EmailSender:GovUkNotify:ApiKey", typeof(Umbraco.Community.EmailSender.Providers.GovUkNotify.NotifyProvider))]
+    [InlineData("GovUkNotify", "EmailSender:GovUkNotify:ApiKey", typeof(Umbraco.Community.EmailSender.Providers.Pipeline.PipelineEmailProvider))]
     public void Provider_ResolvesSenderAndProvider(string kind, string secretKey, Type expectedProvider)
     {
         var settings = new Dictionary<string, string?> { ["EmailSender:Provider"] = kind, [secretKey] = "x" }; // gitleaks:allow
@@ -126,5 +126,21 @@ public class ComposerTests
         Assert.Same(
             provider.GetRequiredService<Umbraco.Community.EmailSender.Providers.IEmailProvider>(),
             provider.GetRequiredService<Umbraco.Community.EmailSender.Providers.IEmailProvider>());
+    }
+
+    // The composer's provider registrations must be exactly what the registry's definition registers, for every kind.
+    [Theory]
+    [MemberData(nameof(RegistryTests.Kinds), MemberType = typeof(RegistryTests))]
+    public void UsesRegistryForEveryKind(Umbraco.Community.EmailSender.Configuration.EmailProviderKind kind)
+    {
+        var composed = Compose(new() { ["EmailSender:Provider"] = kind.ToString() });
+        var expected = new ServiceCollection();
+        Umbraco.Community.EmailSender.Providers.Registry.ProviderRegistry.Get(kind).Register(expected);
+
+        Type[] providerTypes = [typeof(Umbraco.Community.EmailSender.Providers.IEmailProvider), typeof(Umbraco.Community.EmailSender.Providers.Pipeline.IProviderMapper)];
+        Assert.Equal(
+            expected.Where(d => providerTypes.Contains(d.ServiceType)).Select(d => (d.ServiceType, d.ImplementationType)),
+            composed.Where(d => providerTypes.Contains(d.ServiceType)).Select(d => (d.ServiceType, d.ImplementationType)));
+        Assert.Single(composed, d => d.ServiceType == providerTypes[0]);
     }
 }

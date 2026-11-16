@@ -1,0 +1,8 @@
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "from.email": [
+      "The from.email domain must be verified in your account to send emails. #MS42207"
+    ]
+  }
+}

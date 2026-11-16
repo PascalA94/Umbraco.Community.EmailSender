@@ -1,0 +1,8 @@
+# Brevo fixtures
+
+- request-basic.json: sandbox-mode page example, https://developers.brevo.com/docs/using-sandbox-mode.md . Minimally edited: removed the `"headers": {"X-Sib-Sandbox": "drop"}` block so it is a real send. Body field names also match OpenAPI https://developers.brevo.com/openapi/email-api.yaml , path `paths./smtp/email.post.requestBody`.
+- request-attachment.synthesised.json: SYNTHESISED from the OpenAPI schema `components.schemas.SmtpEmailPostRequestBodyContentApplicationJsonSchemaAttachmentItems` (fields `name`, `content` base64, `url`). The docs print no attachment example. "SGVsbG8gd29ybGQ=" is base64 of "Hello world".
+- response-success.json: `### response` block of https://developers.brevo.com/reference/sendtransacemail.md (HTTP 201). Verbatim. Also returned in sandbox mode (docs: "201 success response with a messageId, but no email is sent"). A scheduled send returns 202 with no schema.
+- response-error-validation.json: "Error response" example of https://developers.brevo.com/docs/how-it-works.md (generic, not send-specific; shape matches OpenAPI `SendTransacEmailRequestBadRequestError`: `code` + `message`). Verbatim.
+- response-error-auth.synthesised.json: SYNTHESISED. Docs say 401 "Invalid or missing API key" (https://developers.brevo.com/docs/how-it-works.md) and list `unauthorized` / `Authentication failed` as `code` values, but print no 401 body. The message text is invented.
+- No rate-limit body fixture: docs only specify the 429 status and headers (`x-sib-ratelimit-limit`, `x-sib-ratelimit-remaining`, `x-sib-ratelimit-reset`), https://developers.brevo.com/docs/limit-headers.md .

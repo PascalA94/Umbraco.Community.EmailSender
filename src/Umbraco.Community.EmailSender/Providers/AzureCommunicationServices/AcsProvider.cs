@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using Umbraco.Cms.Core.HealthChecks;
 using Umbraco.Community.EmailSender.Configuration;
+using Umbraco.Community.EmailSender.Providers.Pipeline;
 
 namespace Umbraco.Community.EmailSender.Providers.AzureCommunicationServices;
 
@@ -28,11 +29,27 @@ internal sealed partial class AcsProvider(
     private readonly object _gate = new();
     private (string ConnectionString, EmailClient Client)? _cached;
 
+    /// <summary>
+    /// The same caps the pipeline providers declare. ACS stays outside the pipeline's retries (M2 ruling: no idempotency key,
+    /// so a resent POST could send an invite twice) and only shares its pre-checks.
+    /// </summary>
+    public static ProviderCapabilities Capabilities { get; } = new()
+    {
+        Headers = HeaderPolicy.SendAsGiven,
+        ReplyTo = ReplyToStyle.List,
+        Tracking = TrackingStyle.PerRequest,
+        Idempotency = IdempotencyCarriage.None,
+        Inline = InlineContentId.ContentId,
+    };
+
     public string Name => "Azure Communication Services";
 
     public async Task SendAsync(OutboundEmail email, CancellationToken ct)
     {
         var current = options.CurrentValue;
+        // The shared caps (50 recipients in To, Cc and Bcc) before the SDK sees anything; nothing else from the pipeline.
+        ProviderPreChecks.Run(Name, email, Capabilities);
+        var started = clock.GetTimestamp();
         try
         {
             var client = ClientFor(current.AzureCommunicationServices.ConnectionString);
@@ -40,19 +57,27 @@ internal sealed partial class AcsProvider(
             var operation = await ProviderTimeout.RunAsync(Name, current.TimeoutSeconds, clock, ct,
                 // Started: the request thread must not poll until delivery (core would hold an invite request open).
                 token => client.SendAsync(WaitUntil.Started, message, token));
-            logger.LogInformation("Azure Communication Services accepted operation {OperationId}", operation.Id);
+            // The same line the pipeline providers log, so one log query covers every provider.
+            LogSent(Name, email.To.Count + email.Cc.Count + email.Bcc.Count, email.Attachments.Count,
+                Pipeline.ResponseReader.SafeId(operation.Id) ?? "unreadable", 1, (long)clock.GetElapsedTime(started).TotalMilliseconds);
         }
         catch (RequestFailedException ex) when (ex.Status == 0)
         {
             // The SDK reports DNS, connection and TLS failures as status 0.
             throw new EmailSendException($"{Name} could not be reached.");
         }
+        catch (RequestFailedException ex) when (ex.Status == 429)
+        {
+            // Retries stay off (M2 ruling), so a rate limit fails at once with the same text as the pipeline providers.
+            throw new EmailSendException($"{Name} is rate limiting this site (HTTP 429). Try again later.");
+        }
         catch (RequestFailedException ex)
         {
             // No inner exception: the SDK's message and response can echo the request. Only the status and a short
             // service error code travel on.
             var code = ex.ErrorCode is { Length: > 0 } c && SafeCode().IsMatch(c) ? $", error {c}" : string.Empty;
-            throw new EmailSendException($"{Name} rejected the email: HTTP {ex.Status}{code}.");
+            var hint = ex.Status == 401 ? $" Check {ConnectionStringKey}." : string.Empty;
+            throw new EmailSendException($"{Name} rejected the email: HTTP {ex.Status}{code}.{hint}");
         }
         catch (Exception ex) when (ex is not (EmailSendException or OperationCanceledException))
         {
@@ -223,4 +248,7 @@ internal sealed partial class AcsProvider(
 
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,64}$")]
     private static partial Regex SafeCode();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Provider} accepted the email: {Recipients} recipients, {Attachments} attachments, message id {MessageId}, {Attempts} attempts, {ElapsedMs} ms")]
+    private partial void LogSent(string provider, int recipients, int attachments, string messageId, int attempts, long elapsedMs);
 }

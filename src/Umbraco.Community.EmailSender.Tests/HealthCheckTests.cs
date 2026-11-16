@@ -9,6 +9,7 @@ using Umbraco.Community.EmailSender.Configuration;
 using Umbraco.Community.EmailSender.HealthChecks;
 using Umbraco.Community.EmailSender.Providers;
 using Umbraco.Community.EmailSender.Providers.AzureCommunicationServices;
+using Umbraco.Community.EmailSender.Providers.Pipeline;
 using Umbraco.Community.EmailSender.Providers.Postmark;
 
 namespace Umbraco.Community.EmailSender.Tests;
@@ -28,17 +29,17 @@ public class HealthCheckTests
         return Assert.Single(statuses);
     }
 
-    private static PostmarkProvider Postmark(HttpStatusCode status)
+    private static PipelineEmailProvider Postmark(HttpStatusCode status)
     {
         var handler = new Recorder((_, _) => Task.FromResult(Recorder.Json(status, """{"ErrorCode":0,"Message":"SENTINEL-BODY"}""")));
         var factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient(PostmarkProvider.ClientName)
+        factory.CreateClient(PostmarkMapper.ClientName)
             .Returns(_ => new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri("https://api.postmarkapp.com/") });
         var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
         var options = new EmailSenderOptions { Provider = EmailProviderKind.Postmark };
         options.Postmark.ServerToken = "pm-SENTINEL-TOKEN"; // gitleaks:allow
         monitor.CurrentValue.Returns(options);
-        return new PostmarkProvider(factory, monitor, new FakeTimeProvider(), NullLogger<PostmarkProvider>.Instance);
+        return new PipelineEmailProvider(new PostmarkMapper(), factory, monitor, new FakeTimeProvider(), NullLogger<PipelineEmailProvider>.Instance);
     }
 
     [Fact]
