@@ -14,6 +14,9 @@ internal static class AcsServiceCollectionExtensions
             // The factory logs headers at Trace: the rendered text is redacted but the structured state keeps the raw value, so a
             // structured log sink would receive the signed Authorization header. This package logs for itself.
             .RemoveAllLoggers()
+            // A site's ConfigureHttpClientDefaults (Aspire ServiceDefaults' resilience handler, a Polly policy) would wrap this
+            // client and resend POSTs: ACS retries are off (M2 ruling), and a duplicate invite is worse than a failed one.
+            .ConfigureAdditionalHttpMessageHandlers((handlers, _) => handlers.Clear())
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 AllowAutoRedirect = false,

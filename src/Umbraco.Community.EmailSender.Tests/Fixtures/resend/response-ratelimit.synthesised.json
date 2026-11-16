@@ -1,0 +1,5 @@
+{
+  "statusCode": 429,
+  "name": "rate_limit_exceeded",
+  "message": "Too many requests. Please limit the number of requests per second. Or contact support to increase rate limit."
+}

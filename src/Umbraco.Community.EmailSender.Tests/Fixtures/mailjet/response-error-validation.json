@@ -1,0 +1,23 @@
+{
+  "Messages": [
+    {
+      "Status": "error",
+      "Errors": [
+        {
+          "ErrorIdentifier": "f987008f-251a-4dff-8ffc-40f1583ad7bc",
+          "ErrorCode": "mj-0004",
+          "StatusCode": 400,
+          "ErrorMessage": "Type mismatch. Expected type \"array of emails\".",
+          "ErrorRelatedTo": ["HTMLPart", "TemplateID"]
+        },
+        {
+          "ErrorIdentifier": "8e28ac9c-1fd7-41ad-825f-1d60bc459189",
+          "ErrorCode": "mj-0005",
+          "StatusCode": 400,
+          "ErrorMessage": "The To is mandatory but missing from the input",
+          "ErrorRelatedTo": ["To"]
+        }
+      ]
+    }
+  ]
+}

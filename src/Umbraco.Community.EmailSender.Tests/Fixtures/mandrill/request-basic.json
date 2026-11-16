@@ -1,0 +1,1 @@
+{"key": "TEST-ONLY-NOT-A-SECRET", "message": {"from_email": "hello@example.com", "subject": "Hello World", "text": "Welcome to Mailchimp Transactional!", "to": [{ "email": "freddie@example.com", "type": "to" }]}}

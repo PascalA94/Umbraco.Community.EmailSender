@@ -1,0 +1,27 @@
+{
+  "id": "em_01krdgeqcxet5s7t44vh8rt9mg",
+  "from": {
+    "email": "onboarding@messagebird.dev",
+    "name": "Bird"
+  },
+  "to": [
+    {
+      "email": "delivered@messagebird.dev"
+    }
+  ],
+  "subject": "Hello from Bird",
+  "category": "transactional",
+  "status": "accepted",
+  "accepted_count": 1,
+  "processed_count": 0,
+  "delivered_count": 0,
+  "bounced_count": 0,
+  "complained_count": 0,
+  "deferred_count": 0,
+  "rejected_count": 0,
+  "open_count": 0,
+  "click_count": 0,
+  "track_opens": false,
+  "track_clicks": false,
+  "created_at": "2026-07-01T12:00:00Z"
+}

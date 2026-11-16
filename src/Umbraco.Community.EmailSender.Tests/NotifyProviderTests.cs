@@ -11,6 +11,7 @@ using Umbraco.Cms.Core.HealthChecks;
 using Umbraco.Community.EmailSender.Configuration;
 using Umbraco.Community.EmailSender.Providers;
 using Umbraco.Community.EmailSender.Providers.GovUkNotify;
+using Umbraco.Community.EmailSender.Providers.Pipeline;
 
 namespace Umbraco.Community.EmailSender.Tests;
 
@@ -26,21 +27,21 @@ public class NotifyProviderTests
     {
         public Recorder Handler { get; }
         public FakeTimeProvider Clock { get; } = new(DateTimeOffset.Parse("2026-11-04T10:00:00Z"));
-        public FakeLogger<NotifyProvider> Logger { get; } = new();
-        public NotifyProvider Provider { get; }
+        public FakeLogger<PipelineEmailProvider> Logger { get; } = new();
+        public PipelineEmailProvider Provider { get; }
 
         public Rig(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? respond = null, EmailSenderOptions? options = null)
         {
             Handler = new Recorder(respond ?? ((_, _) => Task.FromResult(Json(HttpStatusCode.Created, """{"id":"740e5834-3a29-46b4-9a6f-16142fde533a"}"""))));
             var factory = Substitute.For<IHttpClientFactory>();
-            factory.CreateClient(NotifyProvider.ClientName)
+            factory.CreateClient(NotifyMapper.ClientName)
                 .Returns(_ => new HttpClient(Handler, disposeHandler: false) { BaseAddress = new Uri("https://api.notifications.service.gov.uk/") });
             var current = options ?? new EmailSenderOptions { Provider = EmailProviderKind.GovUkNotify };
             current.GovUkNotify.ApiKey ??= ApiKey;
             current.GovUkNotify.EmailTemplateId ??= TemplateId;
             var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
             monitor.CurrentValue.Returns(current);
-            Provider = new NotifyProvider(factory, monitor, Clock, Logger);
+            Provider = new PipelineEmailProvider(new NotifyMapper(Clock), factory, monitor, Clock, Logger);
         }
     }
 
@@ -218,7 +219,7 @@ public class NotifyProviderTests
     [Theory]
     [InlineData(400, """{"errors":[{"error":"BadRequestError","message":"email_address leak@example.test SENTINEL-BODY"}],"status_code":400}""", "HTTP 400, BadRequestError")]
     [InlineData(403, """{"errors":[{"error":"AuthError","message":"Invalid token: signature, api token not found SENTINEL-BODY"}],"status_code":403}""", "Check EmailSender:GovUkNotify:ApiKey")]
-    [InlineData(429, """{"errors":[{"error":"RateLimitError","message":"SENTINEL-BODY"}],"status_code":429}""", "HTTP 429, RateLimitError")]
+    [InlineData(429, """{"errors":[{"error":"TooManyRequestsError","message":"SENTINEL-BODY"}],"status_code":429}""", "HTTP 429, TooManyRequestsError")]
     [InlineData(500, "<html>SENTINEL-BODY</html>", "HTTP 500")]
     public async Task Errors_MapToMessageWithoutResponseText(int status, string body, string expected)
     {
@@ -261,7 +262,7 @@ public class NotifyProviderTests
         var n = 0;
         var rig = new Rig((_, _) => Task.FromResult(++n == 1
             ? Json(HttpStatusCode.Created, """{"id":"740e5834-3a29-46b4-9a6f-16142fde533a"}""")
-            : Json(HttpStatusCode.TooManyRequests, """{"errors":[{"error":"RateLimitError","message":"x"}]}""")));
+            : Json(HttpStatusCode.TooManyRequests, """{"errors":[{"error":"TooManyRequestsError","message":"x"}]}""")));
 
         var ex = await Assert.ThrowsAsync<EmailSendException>(
             () => rig.Provider.SendAsync(Email(to: ["a@example.test", "b@example.test"]), CancellationToken.None));
@@ -403,18 +404,19 @@ public class NotifyProviderTests
     }
 
     [Fact]
-    public void NamedClient_HasNotifyBaseAddressAndNoRedirects()
+    public void NamedClient_HasNoBaseAddressAndNoRedirects()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddNotifyProvider();
         using var provider = services.BuildServiceProvider();
 
-        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(NotifyProvider.ClientName);
-        Assert.Equal(new Uri("https://api.notifications.service.gov.uk/"), client.BaseAddress);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(NotifyMapper.ClientName);
+        // The mapper builds an absolute URI per send (design 9.2, "HTTP clients").
+        Assert.Null(client.BaseAddress);
         Assert.Null(client.DefaultRequestHeaders.Authorization);
 
-        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(NotifyProvider.ClientName);
+        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(NotifyMapper.ClientName);
         while (handler is DelegatingHandler delegating)
         {
             handler = delegating.InnerHandler;

@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "errors": [
+    "'from' is required",
+    "'to', 'cc' or 'bcc' address is required",
+    "'subject' is required",
+    "must specify either text or html body"
+  ]
+}

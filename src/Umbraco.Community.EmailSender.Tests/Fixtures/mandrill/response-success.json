@@ -1,0 +1,9 @@
+[
+  {
+    "email": "recipient.email@example.com",
+    "status": "sent",
+    "_id": "string",
+    "reject_reason": "hard-bounce",
+    "queued_reason": "attachments"
+  }
+]

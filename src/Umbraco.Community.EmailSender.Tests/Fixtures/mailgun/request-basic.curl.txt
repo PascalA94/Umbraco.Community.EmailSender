@@ -1,0 +1,7 @@
+curl -s --user "api:$MAILGUN_API_KEY" \
+    https://api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages \
+    -F from='Excited User <postmaster@YOUR_DOMAIN_NAME>' \
+    -F to=recipient@example.com \
+    -F subject="Hello there!" \
+    -F text='This will be the text-only version' \
+    --form-string html='<html><body><p>This is the HTML version</p></body></html>'

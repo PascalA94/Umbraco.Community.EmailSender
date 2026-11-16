@@ -1,0 +1,8 @@
+{
+  "From": "sender@example.com",
+  "To": "receiver@example.com",
+  "Subject": "Password Reset",
+  "TextBody": "Click here to reset your password.",
+  "HtmlBody": "<html><body>Click here to <a href=\"#\">reset</a> your password.</body></html>",
+  "MessageStream": "outbound"
+}

@@ -396,4 +396,27 @@ public class AcsProviderTests
         Assert.True(factoryOptions.ShouldRedactHeaderValue("Authorization"));
         Assert.True(factoryOptions.ShouldRedactHeaderValue("x-ms-content-sha256"));
     }
+
+    // Closes the M3 deferred minor: ACS had no recipient cap; it now runs the shared pre-checks before the SDK.
+    [Fact]
+    public async Task AcsProvider_RecipientCap_51_RefusedBeforeSend()
+    {
+        var rig = new Rig();
+        var email = new OutboundEmail(
+            "from@example.test",
+            [.. Enumerable.Range(0, 49).Select(i => $"u{i}@example.test")],
+            ["c@example.test"],
+            ["b@example.test"],
+            [],
+            "Subject",
+            null,
+            "Body",
+            [],
+            new Dictionary<string, string>());
+
+        var ex = await Assert.ThrowsAsync<EmailSendException>(() => rig.Provider.SendAsync(email, CancellationToken.None));
+
+        Assert.Equal("Azure Communication Services accepts at most 50 recipients in To, Cc and Bcc together.", ex.Message);
+        Assert.Empty(rig.Handler.Calls);
+    }
 }

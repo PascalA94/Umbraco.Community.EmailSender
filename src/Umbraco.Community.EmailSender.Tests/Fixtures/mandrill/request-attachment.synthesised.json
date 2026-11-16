@@ -1,0 +1,15 @@
+{
+  "key": "TEST-ONLY-NOT-A-SECRET",
+  "message": {
+    "from_email": "hello@example.com",
+    "subject": "Report",
+    "html": "<p>See attached.</p><img src=\"cid:logo\">",
+    "to": [{ "email": "freddie@example.com", "type": "to" }],
+    "attachments": [
+      { "type": "text/plain", "name": "readme.txt", "content": "dGVzdCBjb250ZW50" }
+    ],
+    "images": [
+      { "type": "image/png", "name": "logo", "content": "dGVzdCBjb250ZW50" }
+    ]
+  }
+}

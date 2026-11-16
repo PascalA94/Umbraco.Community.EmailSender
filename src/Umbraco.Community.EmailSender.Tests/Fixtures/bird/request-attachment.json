@@ -1,0 +1,15 @@
+{
+  "from": "hello@yourdomain.com",
+  "to": [
+    "delivered@messagebird.dev"
+  ],
+  "subject": "Your invoice",
+  "html": "<p>Thanks for your order. Your invoice is attached.</p>",
+  "attachments": [
+    {
+      "filename": "invoice.pdf",
+      "content": "JVBERi0xLjcKJ...",
+      "content_type": "application/pdf"
+    }
+  ]
+}

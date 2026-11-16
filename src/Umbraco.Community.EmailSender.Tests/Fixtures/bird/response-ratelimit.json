@@ -1,0 +1,10 @@
+{
+  "error": {
+    "type": "rate_limit_error",
+    "code": "E01003",
+    "name": "RateLimited",
+    "message": "Too many requests. Please retry after the period indicated in the Retry-After header.",
+    "doc_url": "https://bird.com/docs/api/errors/E01003",
+    "request_id": "req_01ky7qavkff7qr88vadv6bv948"
+  }
+}

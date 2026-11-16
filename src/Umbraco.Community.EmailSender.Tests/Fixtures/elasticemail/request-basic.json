@@ -1,0 +1,18 @@
+{
+  "Recipients": {
+    "To": ["john.doe@example.com"]
+  },
+  "Content": {
+    "Body": [
+      { "ContentType": "HTML", "Content": "<p>Hello!</p>", "Charset": "utf-8" },
+      { "ContentType": "PlainText", "Content": "Hello!", "Charset": "utf-8" }
+    ],
+    "From": "John Doe <email@domain.com>",
+    "ReplyTo": "John Doe <email@domain.com>",
+    "Subject": "Hello!"
+  },
+  "Options": {
+    "TrackOpens": false,
+    "TrackClicks": false
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "request_id": "00000000-0000-0000-0000-000000000000",
+  "data": {
+    "succeeded": 0,
+    "failed": 1,
+    "failures": [
+      "From header sender domain not verified (example.com). On your Sending > Verified Senders page verify the sender domain or email to be allowed to send"
+    ],
+    "email_id": ""
+  }
+}

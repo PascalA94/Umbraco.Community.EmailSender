@@ -1,0 +1,15 @@
+{
+  "sender": "email@example.com",
+  "to": [
+    "friend@example.com"
+  ],
+  "subject": "SMTP2GO attachment",
+  "text_body": "Hello - find the email attached",
+  "attachments": [
+    {
+      "filename": "testfile.pdf",
+      "fileblob": "--base64-data--",
+      "mimetype": "application/pdf"
+    }
+  ]
+}

@@ -73,6 +73,12 @@ internal sealed record OutboundEmail(
             headers);
     }
 
+    /// <summary>The bare address from <see cref="From"/>; empty when the provider needs no From (GOV.UK Notify).</summary>
+    public string FromAddress => SplitFrom().Address;
+
+    /// <summary>The display name from <see cref="From"/>, or null. Already restricted to plain text by <see cref="Create"/>.</summary>
+    public string? FromName => SplitFrom().Name;
+
     // Counts only: the generated record ToString would print addresses, subject and body.
     public override string ToString()
         => $"OutboundEmail {{ To = {To.Count}, Cc = {Cc.Count}, Bcc = {Bcc.Count}, Attachments = {Attachments.Count} }}";
@@ -100,6 +106,14 @@ internal sealed record OutboundEmail(
         var safeName = !string.IsNullOrEmpty(name) && name.All(c => char.IsLetterOrDigit(c) || c is ' ' or '.' or '-' or '\'' or '&');
         normalised = keepDisplayName && safeName ? $"{name} <{address}>" : address;
         return true;
+    }
+
+    // From is always normalised to "Name <address>" or "address" (TryNormalise), so splitting it needs no parser and stays
+    // right after a `with { From = ... }`.
+    private (string Address, string? Name) SplitFrom()
+    {
+        var open = From.LastIndexOf(" <", StringComparison.Ordinal);
+        return open > 0 && From.EndsWith('>') ? (From[(open + 2)..^1], From[..open]) : (From, null);
     }
 
     private static string StripControlCharacters(string value)

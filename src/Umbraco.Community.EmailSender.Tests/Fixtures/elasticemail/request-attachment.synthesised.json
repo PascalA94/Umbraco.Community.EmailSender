@@ -1,0 +1,15 @@
+{
+  "Recipients": {
+    "To": ["john.doe@example.com"]
+  },
+  "Content": {
+    "Body": [
+      { "ContentType": "PlainText", "Content": "See attached.", "Charset": "utf-8" }
+    ],
+    "Attachments": [
+      { "BinaryContent": "SGVsbG8gd29ybGQ=", "Name": "hello.txt", "ContentType": "text/plain" }
+    ],
+    "From": "John Doe <email@domain.com>",
+    "Subject": "Attachment test"
+  }
+}

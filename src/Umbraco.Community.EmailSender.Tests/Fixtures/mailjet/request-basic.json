@@ -1,0 +1,19 @@
+{
+  "Messages": [
+    {
+      "From": {
+        "Email": "no-reply@example.com",
+        "Name": "Example Sender"
+      },
+      "To": [
+        {
+          "Email": "contact@example.com",
+          "Name": "Example Contact"
+        }
+      ],
+      "Subject": "Hello from Mailjet",
+      "TextPart": "Greetings from Mailjet!",
+      "HTMLPart": "<h3>Hello from Mailjet</h3>"
+    }
+  ]
+}

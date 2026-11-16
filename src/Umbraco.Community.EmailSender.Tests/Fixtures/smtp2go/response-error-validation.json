@@ -1,0 +1,8 @@
+{
+  "error": "An error occurred processing the json data you sent with the request, please make sure the data conforms to the specification for this call (see the documentation here: https://apidoc.smtp2go.com/documentation/#/README) and try again. Don't forget to set Content-Type to 'application/json'.",
+  "error_code": "E_ApiResponseCodes.NON_VALIDATING_IN_PAYLOAD",
+  "field_validation_errors": {
+    "fieldname": "sender",
+    "message": "The field 'sender' was expecting a valid RFC-822 formatted email field but found 'robs_invalid.com', Please correct your JSON payload and try again."
+  }
+}
