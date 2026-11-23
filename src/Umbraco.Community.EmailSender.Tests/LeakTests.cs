@@ -38,6 +38,8 @@ public class LeakTests
     [
         PostmarkToken, AcsKeyRaw, Convert.ToBase64String(Encoding.UTF8.GetBytes(AcsKeyRaw)), NotifySecret, NotifyService,
         "sentinel-key", "eyJ", "Bearer ", "HMAC-SHA256", "Signature=", Address, "example.test", Subject, BodyText, FileName, "SENTINEL-ECHO",
+        // Every provider added after Notify brings its sentinel secrets in its conformance profile.
+        .. Conformance.Profiles.All.SelectMany(p => p.Secrets),
     ];
 
     public enum Failure
@@ -70,7 +72,11 @@ public class LeakTests
 
     private static EmailSenderOptions Options(EmailProviderKind kind)
     {
-        var options = new EmailSenderOptions { Provider = kind, MaxTotalAttachmentBytes = 4 };
+        // The providers added after Notify configure themselves through their profile; the three built ones keep their own values.
+        var options = kind is EmailProviderKind.Postmark or EmailProviderKind.AzureCommunicationServices or EmailProviderKind.GovUkNotify
+            ? new EmailSenderOptions { Provider = kind }
+            : Conformance.Profiles.Get(kind.ToString()).Options();
+        options.MaxTotalAttachmentBytes = 4;
         options.Postmark.ServerToken = PostmarkToken;
         options.AzureCommunicationServices.ConnectionString = AcsConnectionString;
         options.GovUkNotify.ApiKey = $"sentinel-key-{NotifyService}-{NotifySecret}";
@@ -110,13 +116,13 @@ public class LeakTests
     /// The provider exactly as the composer registers it (registry definition, real named client), with the server as the
     /// primary handler of every client. The factory's own logging handlers stay in place.
     /// </summary>
-    private static ServiceProvider Build(EmailProviderKind kind, EmailSenderOptions options, Recorder server)
+    private static ServiceProvider Build(EmailProviderKind kind, EmailSenderOptions options, Recorder server, TimeProvider? clock = null)
     {
         var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();
         monitor.CurrentValue.Returns(options);
         var services = new ServiceCollection();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).AddFakeLogging());
-        services.AddSingleton<TimeProvider>(new FakeTimeProvider(DateTimeOffset.Parse("2026-11-04T10:00:00Z")));
+        services.AddSingleton(clock ?? new FakeTimeProvider(DateTimeOffset.Parse("2026-11-04T10:00:00Z")));
         services.AddSingleton(monitor);
         ProviderRegistry.Get(kind).Register(services);
         services.ConfigureAll<HttpClientFactoryOptions>(o => o.HttpMessageHandlerBuilderActions.Add(b => b.PrimaryHandler = server));
@@ -150,7 +156,9 @@ public class LeakTests
     public async Task NoSecretsOrRecipients_OnAnyFailurePath(EmailProviderKind kind, Failure failure)
     {
         var options = Options(kind);
-        await using var root = Build(kind, options, Server(failure));
+        // A provider with an idempotency key retries a 500 or a dropped connection after a wait, so the clock must move.
+        var clock = new SteppingClock(DateTimeOffset.Parse("2026-11-04T10:00:00Z"));
+        await using var root = Build(kind, options, Server(failure), clock);
         var provider = root.GetRequiredService<IEmailProvider>();
         var clientLogger = new FakeLogger<HttpApiEmailSenderClient>();
         var globalSettings = Substitute.For<IOptionsMonitor<GlobalSettings>>();
@@ -161,7 +169,7 @@ public class LeakTests
 
         var observed = new StringBuilder();
         // Every path here is a failure: a send that quietly succeeds would make the rest of the test vacuous.
-        var ex = await Assert.ThrowsAsync<EmailSendException>(() => client.SendAsync(Message(failure), TimeSpan.FromHours(1)));
+        var ex = Assert.IsType<EmailSendException>(await clock.DriveAsync(client.SendAsync(Message(failure), TimeSpan.FromHours(1)), () => 0));
         observed.AppendLine(ex.ToString());
         Assert.Null(ex.InnerException);
 
@@ -171,9 +179,12 @@ public class LeakTests
         observed.AppendLine(health.Message);
         observed.AppendLine(Dump(root.GetFakeLogCollector()));
         observed.AppendLine(options.ToString());
-        observed.AppendLine(options.Postmark.ToString());
-        observed.AppendLine(options.AzureCommunicationServices.ToString());
-        observed.AppendLine(options.GovUkNotify.ToString());
+        // Every provider section, so a new options class cannot print its secret unnoticed.
+        foreach (var section in typeof(EmailSenderOptions).GetProperties().Where(p => p.PropertyType.Name.EndsWith("Options", StringComparison.Ordinal)))
+        {
+            observed.AppendLine(section.GetValue(options)!.ToString());
+        }
+
         observed.AppendLine(System.Text.Json.JsonSerializer.Serialize(options));
         observed.AppendLine(OutboundEmail.Create(Message(Failure.ServerError), null, "from@example.test", null, 1024, new FakeTimeProvider()).ToString());
 

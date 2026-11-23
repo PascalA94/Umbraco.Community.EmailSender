@@ -50,3 +50,42 @@ Findings that differ from, or add to, the design. Newest last.
 - **Postmark on the pipeline (Task 15):** the unconfirmed Sender Signature answers HTTP 422, but its `ErrorCode` is undocumented [unknown, carried]. That 422 shows status and code only; the documented pending-approval codes 412 and 413 carry fixed hints. Rate-limit numbers, headers and `Retry-After` are undocumented, so a 429 without `Retry-After` backs off 1 s then 2 s. Postmark has no idempotency key, so a 500 or a connection failure is never retried. The conformance F3 for Postmark uses ErrorCode 412.
 - **Read cap:** the shared pipeline reads 64 KB of every response (was 4 KB for Postmark and Notify errors), per design 9.2 step 4. Only allow-listed codes are ever echoed, so the larger read changes no error text.
 - **Host-wide HTTP defaults (M6 security review):** a site's `ConfigureHttpClientDefaults` (Aspire ServiceDefaults' resilience handler, any site-wide Polly policy) wraps every named client, so it would resend provider POSTs on 5xx, 429 and its own timeouts, bypassing the design 9.2 table and the ACS no-retry ruling. Every provider client now clears additional handlers (`ConfigureAdditionalHttpMessageHandlers`); a registry-driven test checks every provider, with the defaults registered before and after the package.
+
+## M7 (wave A: SendGrid, Resend, Mailgun, Brevo, Mailjet)
+
+Each provider is built from its research note and checked against recorded examples. None has been run live. Unknowns below are carried with the safe default (design 9.11).
+
+- **Allowed-host check (M6 deferred minor, done first):** `ProviderCapabilities.AllowedHosts` lists every host a mapper may address, all over https. The pipeline refuses any other host before sending ("<Provider> built a request for a host it is not allowed to use. Nothing was sent."), so a mapper that builds a host from options cannot send the credential elsewhere. A registry-driven test requires every pipeline mapper to declare it. Postmark and Notify were updated.
+- **SendGrid:**
+  - The `X-Message-Id` header is undocumented [unknown]: the id is read from it when present, else "none".
+  - No `Retry-After` is documented, so a 429 backs off 1 s then 2 s.
+  - The size cap is 20 MB because the docs say both 20 MB and 30 MB.
+  - A non-ASCII From display name is dropped (the address stays).
+  - Any 2xx is accepted (200 appears only in sandbox mode).
+  - Error `errors[].message` is never read.
+- **Resend:**
+  - The error body shape comes from the official SDK source, not a docs example (fixtures are `.synthesised`); only `name` is echoed, and only when it is a short token.
+  - The per-request Cc and Bcc caps are undocumented: the shared 50 applies.
+  - The 409 idempotency errors are not special-cased (status only).
+  - A quota 429 (`daily_quota_exceeded`, `monthly_quota_exceeded`) is not retried.
+- **Mailgun:**
+  - Error bodies and the unverified-sender signal are undocumented: status and a fixed hint only, F3 not applicable.
+  - `h:Reply-To` is inferred from the `h:` prefix rule, not shown on the docs page.
+  - The 25 MB cap is applied to the multipart body (raw bytes, no base64); Mailgun's own count of a MIME-encoded message may be stricter.
+  - Whether a Domain Sending Key can be made on the free plan is unknown.
+  - 420 is retried like 429.
+- **Brevo:**
+  - Size caps are undocumented, so only the package cap applies.
+  - A `duplicate_parameter` error is assumed to be HTTP 400 (the status is undocumented). It is accepted with id "none" and a Warning only on a retry that carried our own key.
+  - Header policy: all dropped, `idempotencyKey` kept in the body's `headers`.
+  - Tracking is an account setting.
+- **Mailjet:**
+  - The HTTP status of a failed message inside a 2xx is undocumented: the error's own `StatusCode` is shown, never its text.
+  - The 401 and 429 bodies are undocumented: status only.
+  - The per-message recipient cap is unknown (shared 50).
+  - Regions are unknown: one host.
+  - An unreadable or `Messages`-less 2xx fails closed.
+- **Pipeline change:** `IProviderMapper.ReadOutcome` gained an overload that takes the `SendAttempt` (default: ignores it). Only Brevo overrides it.
+- **Conformance suite changes:** a multipart provider's shape match compares form part names with the curl fixtures (`RecordedEmail.PartNames`, `FixtureLoader.CurlPartNames`); `ProfileExpectations.BinaryAttachments` sizes F11 without base64 growth; an empty `SuccessBody` means an empty response (SendGrid).
+- **Leak sweep found a real gap:** `LeakTests` configured only the three built providers, so a new provider ran with no secret set and proved nothing. Options now come from each provider's profile, every profile secret joins the sentinel list, every options class is printed, and the clock is a `SteppingClock` (a provider with an idempotency key waits before retrying a 500, which hung on a frozen fake clock).
+- Two older tests used "Mailgun" as an example of an unknown provider name; they now use "Mailchimp".

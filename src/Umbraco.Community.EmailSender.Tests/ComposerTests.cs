@@ -59,7 +59,7 @@ public class ComposerTests
     [Fact]
     public void UnknownProvider_FailsAtComposeNamingAllowedValues()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => Compose(new() { ["EmailSender:Provider"] = "Mailgun" }));
+        var ex = Assert.Throws<InvalidOperationException>(() => Compose(new() { ["EmailSender:Provider"] = "Mailchimp" }));
 
         Assert.Contains("Postmark", ex.Message);
     }

@@ -35,7 +35,7 @@ internal sealed class FakeProviderServer(TimeProvider clock, Func<int, HttpReque
     /// <summary>The profile's success response, headers included.</summary>
     public static HttpResponseMessage Success(IProviderProfile profile)
     {
-        var body = profile.Expect.SuccessBody.TrimStart() is ['{' or '[', ..]
+        var body = profile.Expect.SuccessBody.Length == 0 || profile.Expect.SuccessBody.TrimStart() is ['{' or '[', ..]
             ? profile.Expect.SuccessBody
             : FixtureLoader.Text(profile.FixtureFolder!, profile.Expect.SuccessBody);
         var response = Answer(profile.Expect.SuccessStatus, body);

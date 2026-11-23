@@ -29,6 +29,12 @@ internal interface IProviderMapper
     /// <summary>Decides accepted, rejected or unreadable. <paramref name="body"/> is already capped at 64 KB.</summary>
     ProviderOutcome ReadOutcome(HttpResponseMessage response, ReadOnlyMemory<byte> body);
 
+    /// <summary>
+    /// The same, for a mapper whose reading depends on the attempt: Brevo's <c>duplicate_parameter</c> means the first attempt
+    /// was accepted only when this one is a retry. The default ignores the attempt.
+    /// </summary>
+    ProviderOutcome ReadOutcome(HttpResponseMessage response, ReadOnlyMemory<byte> body, SendAttempt attempt) => ReadOutcome(response, body);
+
     /// <summary>A read-only request that proves the credentials, or null when the provider has none (design 9.6).</summary>
     HttpRequestMessage? BuildHealthRequest(EmailSenderOptions options) => null;
 

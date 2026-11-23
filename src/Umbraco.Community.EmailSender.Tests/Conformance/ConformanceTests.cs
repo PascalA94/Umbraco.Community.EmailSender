@@ -102,6 +102,20 @@ public class ConformanceTests
             return;
         }
 
+        if (recorded.PartNames is { } parts)
+        {
+            // A multipart request: the fixtures are curl commands, so part names are compared, not JSON paths.
+            var known = FixtureLoader.CurlPartNames(profile.FixtureFolder!);
+            var extra = parts.Where(n => !known.Contains(n) && !profile.Expect.ShapeExtras.Any(e => n.StartsWith(e, StringComparison.Ordinal))).ToList();
+            Assert.True(extra.Count == 0, $"Sent but not in any {profile.FixtureFolder} request fixture: {string.Join(", ", extra)}");
+            foreach (var required in profile.Expect.RequiredPaths)
+            {
+                Assert.Contains(required, parts);
+            }
+
+            return;
+        }
+
         Assert.True(recorded.Json is not null, "The request body is not JSON, so it cannot be shape-matched.");
         var fixture = FixtureLoader.RequestShapes(profile.FixtureFolder!);
         var sent = FixtureLoader.Shape(recorded.Json!.Value);
@@ -444,7 +458,7 @@ public class ConformanceTests
     private static async Task F11(IProviderProfile profile)
     {
         var max = profile.Expect.MaxRequestBytes ?? throw NoSignal(profile.Kind.ToString(), "F11");
-        var raw = new byte[(max * 3 / 4) + 1024];
+        var raw = new byte[(profile.Expect.BinaryAttachments ? max : max * 3 / 4) + 1024];
         using var rig = new ConformanceRig(profile, Success(profile));
 
         var error = await rig.SendAsync(Scenarios.Minimal() with { Attachments = [new OutboundAttachment("big.bin", "application/octet-stream", Convert.ToBase64String(raw))] });

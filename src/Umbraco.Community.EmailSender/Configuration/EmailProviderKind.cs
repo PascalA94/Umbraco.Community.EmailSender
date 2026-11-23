@@ -6,6 +6,11 @@ public enum EmailProviderKind
     AzureCommunicationServices,
     Postmark,
     GovUkNotify,
+    SendGrid,
+    Resend,
+    Mailgun,
+    Brevo,
+    Mailjet,
 }
 
 /// <summary>Parses <c>EmailSender:Provider</c> case-insensitively and names the allowed values on failure.</summary>
