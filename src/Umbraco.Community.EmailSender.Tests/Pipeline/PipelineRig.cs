@@ -106,10 +106,18 @@ internal sealed class PipelineRig
         Handler = new Recorder(async (request, ct) =>
         {
             CallTimes.Add(Clock.GetUtcNow());
+            var answer = respond(++count, request, ct);
+            // Only an answer that is still pending counts as in flight (a hang the budget must end). A responder that is merely
+            // slow to compute a ready answer is real work: counting it let the clock driver jump to the budget (seen on CI).
+            if (answer.IsCompleted)
+            {
+                return await answer;
+            }
+
             Interlocked.Increment(ref inFlight);
             try
             {
-                return await respond(++count, request, ct);
+                return await answer;
             }
             finally
             {
