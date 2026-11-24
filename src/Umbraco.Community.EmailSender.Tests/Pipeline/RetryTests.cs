@@ -31,6 +31,27 @@ public class RetryTests
     }
 
     [Fact]
+    public async Task SlowButAnsweringRetry_IsNotMistakenForAHang()
+    {
+        // The retry attempt does real work for 100 ms and then answers. The clock driver polls every 5 ms and must not read
+        // that as a hang and jump the fake clock to the budget (this failed once on a slow GitHub runner).
+        var rig = new PipelineRig(respond: (n, _, _) =>
+        {
+            if (n == 1)
+            {
+                return Task.FromResult(PipelineRig.Status(429, retryAfter: "3"));
+            }
+
+            Thread.Sleep(100);
+            return Task.FromResult(Ok());
+        });
+
+        Assert.Null(await rig.SendAdvancingAsync());
+
+        Assert.Equal(2, rig.Handler.Calls.Count);
+    }
+
+    [Fact]
     public async Task Retry429_HonoursRetryAfterHttpDate()
     {
         PipelineRig? rigRef = null;
