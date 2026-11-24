@@ -354,6 +354,8 @@ public class ConformanceTests
         Assert.Equal(2, rig.Server.Calls.Count);
         Assert.InRange((rig.Server.Calls[1].At - rig.Server.Calls[0].At).TotalSeconds, 1.0, 1.11);
         Assert.Contains(rig.Logs.GetSnapshot(), r => r.Level == LogLevel.Information && r.Message.Contains("2 attempts", StringComparison.Ordinal));
+        // A credential fetched for the send (Graph's token) is kept across a retry, not fetched again.
+        Assert.Equal(profile.Auxiliary is null ? 0 : 1, rig.Server.AuxCalls.Count);
         rig.AssertNoLeaks();
     }
 

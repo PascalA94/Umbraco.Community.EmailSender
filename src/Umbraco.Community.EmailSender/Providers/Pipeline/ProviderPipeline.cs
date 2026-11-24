@@ -35,11 +35,13 @@ internal sealed partial class ProviderPipeline(
         using var timeout = new CancellationTokenSource(budget, clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
         var token = linked.Token;
+        var refreshed = false;
         try
         {
             for (var attempt = 1; ; attempt++)
             {
-                var current = new SendAttempt(attempt, key);
+                // Inside the budget: a slow token endpoint cannot hang the request thread.
+                var current = new SendAttempt(attempt, key, await mapper.AcquireCredentialAsync(options, token));
                 using var request = await PrepareAsync(email, options, current, token);
                 HttpResponseMessage response;
                 try
@@ -52,7 +54,7 @@ internal sealed partial class ProviderPipeline(
                     // The request may have reached the provider before the connection broke, so it is repeated only when an
                     // idempotency key makes a repeat safe.
                     var failure = $"{mapper.Name} send failed: {nameof(HttpRequestException)}.";
-                    if (Caps.Idempotency == IdempotencyCarriage.None || attempt == MaxAttempts
+                    if (Caps.Idempotency == IdempotencyCarriage.None || attempt >= MaxAttempts
                         || !CanWait(Backoff(attempt, jitter), started, budget))
                     {
                         throw Fail(failure, "connection failure");
@@ -75,6 +77,12 @@ internal sealed partial class ProviderPipeline(
                             return;
                         case ProviderOutcome.UnreadableOutcome when response.IsSuccessStatusCode:
                             throw Fail($"{mapper.Name} answered HTTP {(int)response.StatusCode} but the result could not be read.", (int)response.StatusCode, null);
+                        case ProviderOutcome.RejectedOutcome { Status: 401 } when mapper.RefreshesCredentialOnUnauthorized && !refreshed && attempt < MaxAttempts:
+                            // An expired credential, not a refused send: nothing was accepted, so repeating is safe. Once only; a
+                            // second 401 falls through to the refusal below.
+                            refreshed = true;
+                            mapper.ForgetCredential();
+                            break;
                         case ProviderOutcome.RejectedOutcome rejected:
                             var wait = DecideRetry(rejected, response, attempt, started, budget);
                             await WaitAsync(wait, token);
@@ -111,7 +119,7 @@ internal sealed partial class ProviderPipeline(
         var retryable = rejected.Retryable
             && ((rejected.Status is 429 or 420 or 503 && !rejected.QuotaStop)
                 || (rejected.Status is 500 or 502 or 504 && Caps.Idempotency != IdempotencyCarriage.None));
-        if (!retryable || attempt == MaxAttempts)
+        if (!retryable || attempt >= MaxAttempts)
         {
             throw Fail(text, rejected.Status, rejected.Code);
         }

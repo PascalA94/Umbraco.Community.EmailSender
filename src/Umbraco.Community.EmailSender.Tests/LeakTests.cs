@@ -100,7 +100,11 @@ public class LeakTests
         return response;
     }
 
-    private static Recorder Server(Failure failure) => new((request, _) => failure switch
+    /// <summary>The profile's auxiliary answer (Graph's token request) goes first, so the failure under test is the send's.</summary>
+    private static Task<HttpResponseMessage>? Auxiliary(EmailProviderKind kind, HttpRequestMessage request)
+        => Conformance.Profiles.All.Single(p => p.Kind == kind).Auxiliary?.Invoke(request) is { } answer ? Task.FromResult(answer) : null;
+
+    private static Recorder Server(EmailProviderKind kind, Failure failure) => new((request, _) => Auxiliary(kind, request) ?? failure switch
     {
         Failure.NetworkException => throw new HttpRequestException($"{Address} {Subject} {PostmarkToken} SENTINEL-ECHO"),
         Failure.Unauthorized => Task.FromResult(Echo(request, HttpStatusCode.Unauthorized, false)),
@@ -158,7 +162,7 @@ public class LeakTests
         var options = Options(kind);
         // A provider with an idempotency key retries a 500 or a dropped connection after a wait, so the clock must move.
         var clock = new SteppingClock(DateTimeOffset.Parse("2026-11-04T10:00:00Z"));
-        await using var root = Build(kind, options, Server(failure), clock);
+        await using var root = Build(kind, options, Server(kind, failure), clock);
         var provider = root.GetRequiredService<IEmailProvider>();
         var clientLogger = new FakeLogger<HttpApiEmailSenderClient>();
         var globalSettings = Substitute.For<IOptionsMonitor<GlobalSettings>>();
@@ -205,13 +209,14 @@ public class LeakTests
     {
         var options = Options(kind);
         var profile = Conformance.Profiles.All.Single(p => p.Kind == kind);
-        var server = new Recorder((_, _) => Task.FromResult(Conformance.FakeProviderServer.Success(profile)));
+        var server = new Recorder((request, _) => Auxiliary(kind, request) ?? Task.FromResult(Conformance.FakeProviderServer.Success(profile)));
         await using var root = Build(kind, options, server);
 
         var provider = root.GetRequiredService<IEmailProvider>();
         await provider.SendAsync(OutboundEmail.Create(Message(Failure.ServerError), null, "from@example.test", null, 1024, new FakeTimeProvider(), provider.UsesFromAddress), CancellationToken.None);
 
-        Assert.Single(server.Calls);
+        // Graph also asks the token endpoint first: exactly one request is the send itself.
+        Assert.Single(server.Calls, c => c.Request.RequestUri!.Host != "login.microsoftonline.com");
         var logs = root.GetFakeLogCollector().GetSnapshot();
         Assert.NotEmpty(logs); // something was logged: the assertion below is not vacuous
         var text = Dump(root.GetFakeLogCollector());

@@ -9,7 +9,7 @@ namespace Umbraco.Community.EmailSender.Providers.Pipeline;
 /// <see cref="IEmailProvider"/> for every HTTP provider: a singleton over <c>IHttpClientFactory</c> and <c>IOptionsMonitor</c>
 /// (pitfalls P1 and P2) that runs the mapper through the shared pipeline (design 9.2).
 /// </summary>
-internal sealed class PipelineEmailProvider(
+internal sealed partial class PipelineEmailProvider(
     IProviderMapper mapper,
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<EmailSenderOptions> options,
@@ -42,6 +42,12 @@ internal sealed class PipelineEmailProvider(
     {
         var current = options.CurrentValue;
         ProviderPreChecks.Run(Name, email, mapper.Capabilities);
+        if (!mapper.UsesFromAddress && email.From.Length > 0)
+        {
+            // Forms workflows and Smtp:From set a From the service will not honour: say so once, never the address.
+            LogFromNotUsed(Name);
+        }
+
         var pipeline = new ProviderPipeline(mapper, httpClientFactory, clock, logger, Jitter);
         if (mapper.Capabilities.Recipients == RecipientPolicy.Batch)
         {
@@ -73,6 +79,12 @@ internal sealed class PipelineEmailProvider(
         var current = options.CurrentValue;
         try
         {
+            var custom = await ProviderTimeout.RunAsync(Name, current.TimeoutSeconds, clock, ct, async token => await mapper.CheckHealthAsync(current, token));
+            if (custom is not null)
+            {
+                return custom;
+            }
+
             using var request = mapper.BuildHealthRequest(current);
             if (request is null)
             {
@@ -98,4 +110,7 @@ internal sealed class PipelineEmailProvider(
             return new HealthCheckStatus($"{Name} could not be reached ({ex.GetType().Name}).") { ResultType = StatusResultType.Error };
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Provider} sends as its configured sender; the message From is not used")]
+    private partial void LogFromNotUsed(string provider);
 }

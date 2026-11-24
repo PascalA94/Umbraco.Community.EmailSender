@@ -26,6 +26,12 @@ internal interface IProviderProfile
 
     ProfileExpectations Expect { get; }
 
+    /// <summary>
+    /// Answers a request that is not the send itself (Graph's token request) before the scenario's own responder sees it, and
+    /// is not counted in <see cref="FakeProviderServer.Calls"/>, so every scenario keeps counting sends only. Null: none.
+    /// </summary>
+    Func<HttpRequestMessage, HttpResponseMessage?>? Auxiliary => null;
+
     /// <summary>Scenario id to the reason it cannot apply. A blank reason fails the suite.</summary>
     IReadOnlyDictionary<string, string> NotApplicable { get; }
 }
