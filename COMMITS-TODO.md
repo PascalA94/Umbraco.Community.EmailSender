@@ -29,6 +29,27 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 19 checkpoint: `feat: Mailgun provider`
 - [x] Task 20 checkpoint: `feat: Brevo provider`
 - [x] Task 21 checkpoint: `feat: Mailjet provider`
+- [x] Task 22 checkpoint: `feat: Bird provider`
+- [x] Task 23 checkpoint: `feat: MailerSend provider`
+- [x] Task 24 checkpoint: `feat: SMTP2GO provider`
+- [x] Task 25 checkpoint: `feat: Elastic Email provider`
+- [x] Task 26 checkpoint: `feat: Mandrill provider`
+- [x] Task 27 checkpoint: `feat: Mailtrap provider` (also: fake server counts only a genuinely pending answer as in flight; a clock-driver race timed out Mandrill C11 once under load)
+
+## Paused here (2026-11-24, M8: wave B)
+
+Milestone: Tasks 22 to 27 done: Bird, MailerSend, SMTP2GO, Elastic Email, Mandrill, Mailtrap, each on the shared pipeline with a conformance profile, quirk tests and a registry entry. Docs refreshed from the workspace (identical); the path check printed nothing. gitleaks clean over `src/`. New: `IProviderMapper.StartupWarnings` and one `ProviderStartupWarnings` handler (Bird and SMTP2GO key-prefix hints, fixed text, never the key).
+Tests: `./scripts/test.sh` passes on both lines (unit 1095 on 17, 1097 on 18; integration 4/4 each), three full runs in a row after the review fixes. No new package, no lock file change. CI has not run on this milestone. Nothing was run live. Every new test was written first and failed (missing types or profile) before the code.
+Review (diff against `82421f4`): qa-reviewer (sonnet): no Critical, 2 Important, 5 Minor. Fixed with a failing test first: SMTP2GO accepted any parseable 2xx with no failure marker (now needs an id or a success count, else fails closed); Bird sent `from` as a display-name string where its own example uses `{email, name}` (now the object). All five departures judged acceptable.
+Found and fixed on the way: `FakeProviderServer` counted an instant responder as in flight, so the clock driver could advance past the send budget under load (Mandrill C11 timed out once). It now counts only a still-pending answer (`FakeProviderServerTests`).
+Rulings: error text for Bird 421, MailerSend 202 and Mandrill rejections uses the shared format with a fixed hint, not the plan's bespoke sentences; MailerSend `x-send-paused` is accepted with a Warning with or without an id; Mandrill omits `preserve_recipients`; Bird has no quota stop (docs ambiguous); the unverified-sender signal for Elastic Email is not applicable (undocumented). Unknowns are in `docs/spikes.md` under M8. Cost if wrong: small text changes before the first alpha.
+Deferred minors (M8):
+- MailerSend: a paused 202 with no id is logged as "accepted ... message id none"; the empty-body vs readable-body 202 test cannot tell the two paths apart.
+- Mandrill test `RequestTypes_ToStringNeverPrintTheKey` has two vacuous lines (`HttpContent.ToString()` prints no body); the record-level lines are real.
+- `FakeProviderServerTests.HangingResponder_IsCountedUntilItEnds` spins without a bound.
+- Elastic Email retries a 500 on the strength of an `Idempotency-Key` that is absent from its older reference (live check needed); Mailtrap accepts `{}` or a non-boolean `success` as sent (within design 9.2).
+- Carried from M7 and still open: secret Trim check, registry-driven `InvalidOptions_NameKeysNeverValues`, echo-body allow-list token leak case, Mailjet 50-attachment test, shared empty-body pre-check, Resend and Mailgun From quoting, AllowedHosts port, address de-duplication.
+Next task: **Task 28 (Microsoft Graph token source), the start of M9** (Opus session; qa-reviewer and security-analyst on opus).
 
 ## Paused here (2026-11-23, M7: wave A)
 
@@ -103,19 +124,21 @@ Deferred minors:
 
 ## Milestone commit
 
-`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M7.
+`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M8.
 
 ```bash
-git switch -c feat/m7-wave-a-providers
+git switch -c feat/m8-wave-b-providers
+git status --short
 git add -A
-git commit -m "feat: SendGrid, Resend, Mailgun, Brevo and Mailjet providers
+git commit -m "feat: Bird, MailerSend, SMTP2GO, Elastic Email, Mandrill and Mailtrap providers
 
-Adds five HTTP providers on the shared pipeline, each with a conformance
-profile, provider-specific tests and a registry entry. Mailgun sends
-multipart form data; Brevo carries its idempotency key in the body and treats
-a duplicate on a retry as accepted; Mailjet fails closed on any message that
-is not a success. The pipeline now refuses any request host outside a
-mapper's allow-list, and the leak sweep configures and checks every
-registered provider."
+Adds six HTTP providers on the shared pipeline, each with a conformance
+profile, provider-specific tests and a registry entry. Bird always sends
+transactional mail with tracking switched off explicitly; MailerSend reads
+its id from a header; SMTP2GO and Mandrill fail closed on a 200 that hides a
+failure; Elastic Email maps status only; Mandrill's key travels in the body
+and is kept out of every log. Bird and SMTP2GO warn at start-up when the key
+prefix looks wrong. The test fake no longer counts an instant answer as a
+hung request, which made a healthy send time out under load."
 git log -1 --stat | head -5
 ```

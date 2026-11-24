@@ -35,6 +35,12 @@ internal interface IProviderMapper
     /// </summary>
     ProviderOutcome ReadOutcome(HttpResponseMessage response, ReadOnlyMemory<byte> body, SendAttempt attempt) => ReadOutcome(response, body);
 
+    /// <summary>
+    /// Fixed-text warnings for the log at start-up, for example a key prefix that does not match the region (design 9.3). Never
+    /// a failure (formats change), and never the key itself.
+    /// </summary>
+    IReadOnlyList<string> StartupWarnings(EmailSenderOptions options) => [];
+
     /// <summary>A read-only request that proves the credentials, or null when the provider has none (design 9.6).</summary>
     HttpRequestMessage? BuildHealthRequest(EmailSenderOptions options) => null;
 

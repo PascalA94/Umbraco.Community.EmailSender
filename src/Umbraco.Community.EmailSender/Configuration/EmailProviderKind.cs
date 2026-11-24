@@ -11,6 +11,12 @@ public enum EmailProviderKind
     Mailgun,
     Brevo,
     Mailjet,
+    Bird,
+    MailerSend,
+    Smtp2Go,
+    ElasticEmail,
+    Mandrill,
+    Mailtrap,
 }
 
 /// <summary>Parses <c>EmailSender:Provider</c> case-insensitively and names the allowed values on failure.</summary>

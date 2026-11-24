@@ -16,10 +16,18 @@ internal sealed class FakeProviderServer(TimeProvider clock, Func<int, HttpReque
     {
         var body = request.Content is null ? [] : await request.Content.ReadAsByteArrayAsync(ct);
         Calls.Add((request, body, clock.GetUtcNow()));
+        var answer = respond(Calls.Count, request, ct);
+        // Only an answer that is genuinely still pending is a hang. Counting an instant one made the clock driver, sampling
+        // mid-answer, advance past the send budget and time out a healthy send (seen once under load in M8).
+        if (answer.IsCompleted)
+        {
+            return await answer;
+        }
+
         Interlocked.Increment(ref inFlight);
         try
         {
-            return await respond(Calls.Count, request, ct);
+            return await answer;
         }
         finally
         {

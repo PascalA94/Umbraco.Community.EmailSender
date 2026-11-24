@@ -42,5 +42,6 @@ public sealed class EmailSenderComposer : IComposer
         ProviderRegistry.Get(kind).Register(builder.Services);
 
         builder.AddNotificationAsyncHandler<UmbracoApplicationStartingNotification, SmtpOverlapStartupWarning>();
+        builder.AddNotificationAsyncHandler<UmbracoApplicationStartingNotification, ProviderStartupWarnings>();
     }
 }
