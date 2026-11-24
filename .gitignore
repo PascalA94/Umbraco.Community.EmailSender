@@ -40,3 +40,7 @@ umbraco-package-schema.json
 # Never commit credentials or private review material
 .env
 *.pfx
+
+# Working notes stay local (the repo is public)
+HANDOVER.md
+COMMITS-TODO.md
