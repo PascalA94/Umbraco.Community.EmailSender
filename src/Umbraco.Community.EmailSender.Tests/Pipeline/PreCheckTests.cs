@@ -132,3 +132,50 @@ public class PreCheckTests
         Assert.Equal("Acs accepts at most 50 recipients in To, Cc and Bcc together.", ex.Message);
     }
 }
+
+/// <summary>M6 deferred security minor: a mapper that builds its host from options must never send the credential elsewhere.</summary>
+public class AllowedHostTests
+{
+    [Fact]
+    public async Task HostNotInAllowList_RefusedBeforeSend()
+    {
+        var rig = new PipelineRig(new ProviderCapabilities { AllowedHosts = ["other.example.test"] });
+
+        var ex = Assert.IsType<EmailSendException>(await rig.SendAdvancingAsync());
+
+        Assert.Equal("Fake built a request for a host it is not allowed to use. Nothing was sent.", ex.Message);
+        Assert.Empty(rig.Handler.Calls);
+    }
+
+    [Fact]
+    public async Task HostInAllowList_IsSent()
+    {
+        var rig = new PipelineRig(new ProviderCapabilities { AllowedHosts = ["fake.test"] });
+
+        Assert.Null(await rig.SendAdvancingAsync());
+        Assert.Single(rig.Handler.Calls);
+    }
+
+    [Fact]
+    public async Task PlainHttp_RefusedBeforeSend()
+    {
+        var rig = new PipelineRig(new ProviderCapabilities { AllowedHosts = ["fake.test"] });
+        rig.Mapper.Scheme = "http";
+
+        Assert.IsType<EmailSendException>(await rig.SendAdvancingAsync());
+        Assert.Empty(rig.Handler.Calls);
+    }
+
+    public static TheoryData<Umbraco.Community.EmailSender.Configuration.EmailProviderKind> PipelineKinds()
+        => new(Conformance.Profiles.All.Where(p => p.Kind != Umbraco.Community.EmailSender.Configuration.EmailProviderKind.AzureCommunicationServices).Select(p => p.Kind));
+
+    [Theory]
+    [MemberData(nameof(PipelineKinds))]
+    public void EveryPipelineMapperDeclaresHosts(Umbraco.Community.EmailSender.Configuration.EmailProviderKind kind)
+    {
+        using var rig = new Conformance.ConformanceRig(Conformance.Profiles.Get(kind.ToString()), (_, _, _) => throw new InvalidOperationException());
+        var mapper = Assert.IsType<PipelineEmailProvider>(rig.Provider).Mapper;
+
+        Assert.NotEmpty(mapper.Capabilities.AllowedHosts ?? []);
+    }
+}

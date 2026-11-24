@@ -27,10 +27,12 @@ internal sealed class FakeMapper(ProviderCapabilities capabilities) : IProviderM
 
     public List<SendAttempt> Attempts { get; } = [];
 
+    public string Scheme { get; set; } = "https";
+
     public HttpRequestMessage BuildRequest(OutboundEmail email, EmailSenderOptions options, SendAttempt attempt)
     {
         Attempts.Add(attempt);
-        var request = new HttpRequestMessage(HttpMethod.Post, Url)
+        var request = new HttpRequestMessage(HttpMethod.Post, Scheme + Url[5..])
         {
             Content = JsonContent.Create(new Dictionary<string, object?>
             {

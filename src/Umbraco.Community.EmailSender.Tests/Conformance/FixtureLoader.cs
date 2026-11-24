@@ -26,6 +26,21 @@ internal static class FixtureLoader
         return shapes;
     }
 
+    /// <summary>The form part names in every <c>request-*.curl.txt</c> (<c>-F name=</c> and <c>--form-string name=</c>), for multipart providers.</summary>
+    public static HashSet<string> CurlPartNames(string folder)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in Directory.GetFiles(Path.Combine(Root, folder), "request-*.curl.txt"))
+        {
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(file), @"(?:-F|--form-string)\s+([A-Za-z:\-]+)="))
+            {
+                names.Add(m.Groups[1].Value);
+            }
+        }
+
+        return names;
+    }
+
     /// <summary>
     /// Every value as <c>path:kind</c>, with arrays as <c>path[]</c>, so two documents compare by structure and JSON type, not
     /// by value (design 9.5, "compared by shape").

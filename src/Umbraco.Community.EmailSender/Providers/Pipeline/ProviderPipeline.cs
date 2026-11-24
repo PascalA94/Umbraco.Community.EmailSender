@@ -39,7 +39,8 @@ internal sealed partial class ProviderPipeline(
         {
             for (var attempt = 1; ; attempt++)
             {
-                using var request = await PrepareAsync(email, options, new SendAttempt(attempt, key), token);
+                var current = new SendAttempt(attempt, key);
+                using var request = await PrepareAsync(email, options, current, token);
                 HttpResponseMessage response;
                 try
                 {
@@ -64,7 +65,7 @@ internal sealed partial class ProviderPipeline(
                 using (response)
                 {
                     var body = await ResponseReader.ReadCappedAsync(response, token);
-                    switch (mapper.ReadOutcome(response, body))
+                    switch (mapper.ReadOutcome(response, body, current))
                     {
                         case ProviderOutcome.AcceptedOutcome accepted:
                             LogAccepted(email, accepted, attempt, started);
@@ -198,6 +199,14 @@ internal sealed partial class ProviderPipeline(
     private async Task<HttpRequestMessage> PrepareAsync(OutboundEmail email, EmailSenderOptions options, SendAttempt attempt, CancellationToken ct)
     {
         var request = mapper.BuildRequest(email, options, attempt);
+        if (Caps.AllowedHosts is { } hosts
+            && (request.RequestUri is not { IsAbsoluteUri: true, Scheme: "https" } uri
+                || !hosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase)))
+        {
+            request.Dispose();
+            throw Fail($"{mapper.Name} built a request for a host it is not allowed to use. Nothing was sent.", "host not allowed");
+        }
+
         if (request.Content is null)
         {
             return request;

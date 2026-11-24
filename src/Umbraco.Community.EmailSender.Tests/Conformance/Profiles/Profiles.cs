@@ -7,6 +7,11 @@ internal static class Profiles
         new AcsProfile(),
         new PostmarkProfile(),
         new NotifyProfile(),
+        new SendGridProfile(),
+        new ResendProfile(),
+        new MailgunProfile(),
+        new BrevoProfile(),
+        new MailjetProfile(),
     ];
 
     public static IProviderProfile Get(string kind) => All.Single(p => p.Kind.ToString() == kind);

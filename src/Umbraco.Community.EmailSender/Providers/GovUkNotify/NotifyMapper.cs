@@ -32,6 +32,7 @@ internal sealed partial class NotifyMapper(TimeProvider clock) : IProviderMapper
 
     public ProviderCapabilities Capabilities { get; } = new()
     {
+        AllowedHosts = ["api.notifications.service.gov.uk"],
         MaxAttachments = 0,
         MaxCc = 0,
         MaxBcc = 0,

@@ -64,6 +64,9 @@ internal sealed record ProfileExpectations
 
     public bool FailClosedOn2xx { get; init; }
 
+    /// <summary>The request carries attachments as raw bytes, not base64 (Mailgun's multipart), so F11 sizes them without the 4/3 growth.</summary>
+    public bool BinaryAttachments { get; init; }
+
     public HttpStatusCode SuccessStatus { get; init; } = HttpStatusCode.OK;
 
     /// <summary>The success body: a fixture file name, or inline JSON when it starts with <c>{</c> or <c>[</c>.</summary>

@@ -30,6 +30,9 @@ internal sealed record RecordedEmail
 
     public string? IdempotencyKey { get; init; }
 
+    /// <summary>The form part names, for a multipart request (Mailgun): the shape match compares these with the curl fixtures.</summary>
+    public IReadOnlyList<string>? PartNames { get; init; }
+
     /// <summary>The request body as JSON for the shape match, or null when the body is not JSON.</summary>
     public System.Text.Json.JsonElement? Json { get; init; }
 }

@@ -25,6 +25,7 @@ internal sealed class PostmarkMapper : IProviderMapper
     {
         // 10 MB for the whole request [docs]; the default 10 MB raw attachment cap exceeds this after base64 (design 9.13 row 7).
         MaxRequestBytes = 10 * 1024 * 1024,
+        AllowedHosts = ["api.postmarkapp.com"],
         Headers = HeaderPolicy.SendAsGiven,
         ReplyTo = ReplyToStyle.CommaSeparated,
         Tracking = TrackingStyle.PerRequest,

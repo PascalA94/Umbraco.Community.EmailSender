@@ -23,6 +23,28 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 14 checkpoint: `feat: shared provider pipeline`
 - [x] Task 15 checkpoint: `feat: conformance suite; Postmark on the shared pipeline` (PostmarkProviderTests kept; no case deleted, two renamed to the 64 KB cap and no base address)
 - [x] Task 16 checkpoint: `feat: Notify and ACS in the conformance suite`
+- [x] Task 16.5 (ruling): allowed-host check on every pipeline mapper (M6 deferred security minor), done before Mailgun
+- [x] Task 17 checkpoint: `feat: SendGrid provider`
+- [x] Task 18 checkpoint: `feat: Resend provider`
+- [x] Task 19 checkpoint: `feat: Mailgun provider`
+- [x] Task 20 checkpoint: `feat: Brevo provider`
+- [x] Task 21 checkpoint: `feat: Mailjet provider`
+
+## Paused here (2026-11-23, M7: wave A)
+
+Milestone: Tasks 17 to 21 done: SendGrid, Resend, Mailgun, Brevo, Mailjet, each on the shared pipeline with a conformance profile, quirk tests and a registry entry. Docs refreshed from the workspace (design and plan were already identical); the path check printed nothing. gitleaks clean over `src/`.
+Tests: `./scripts/test.sh` passes on both lines (unit 747 on 17, 745 on 18; integration 4/4 each). Mutation checks (SendGrid `reply_to_list`, Brevo retry rule, Mailjet fail-closed) each made tests fail. No new package, no lock file change. CI has not run on this milestone. Nothing was run live.
+Review (diff against `a5478cc`): qa-reviewer (sonnet): no Critical, no Important, 9 Minor. Fixed: Brevo's duplicate-on-retry rule no longer depends on HTTP 400 (any 4xx; a wrong guess would re-send an invite); Mailjet no longer accepts an all-success body on a non-2xx status. These two tests were written alongside the fix, so there was no watched RED.
+Rulings: added `ProviderCapabilities.AllowedHosts` (the pipeline refuses any other host; the M6 deferred security minor, done before Mailgun); `ReadOutcome` gained an attempt-aware overload (Brevo only); LeakTests now takes options from each profile, adds every profile secret as a sentinel, prints every options class and drives a `SteppingClock` (the old file configured only the three built providers and hung on idempotent retries); multipart shape match by part name; F11 `BinaryAttachments`; two old tests used "Mailgun" as an unknown provider name, now "Mailchimp". Unknowns are in `docs/spikes.md` under M7. Cost if wrong: small text changes before the first alpha.
+Deferred minors (M7):
+- Secret validation lets leading or trailing spaces through (Mailgun and Mailjet put them inside Basic credentials); add a `Trim` check.
+- `InvalidOptions_NameKeysNeverValues` covers only the three built providers; make it registry-driven.
+- Echo bodies never carry an allow-list token (Resend `name`, Brevo `code`, Mailjet `ErrorCode` could carry a key-shaped string through `SafeCode`); add a leak case and tighten per-provider code shapes.
+- Mailjet's 50-attachment cap has no test.
+- Only SendGrid refuses an empty body before sending; move the check into the shared pre-checks and skip empty Mailgun parts.
+- Resend and Mailgun send `From` unquoted: a name such as `Acme Inc.` may need quoting (unverified).
+- AllowedHosts does not compare the port; no de-duplication of addresses across To, Cc and Bcc; how .NET encodes a quote or non-ASCII character in a Mailgun attachment filename is untested against a real server.
+Next task: **Task 22 (wave B: Bird), the start of M8.**
 
 ## Paused here (2026-11-16, M6: shared pipeline and conformance suite)
 
@@ -78,24 +100,22 @@ Deferred minors:
 - Carried from M2: ACS no recipient-count guard, 10 MB cap is raw bytes, no concurrency test on the ACS client cache, `Redirect_IsAFailureAndTheTokenIsNotResent` proves only that a 3xx fails, MimeKit used transitively, config binder echoes a mistyped `TimeoutSeconds`/`MaxTotalAttachmentBytes`/`DisableLinkTracking`, `EmailProviderKindParser` is public, attachment path is synchronous and buffers, never `{@}`-destructure the options or `OutboundEmail` in logs.
 - To check live in Task 11: ACS and the `Expires` header; Notify trial-mode refusal text, `((subject))` in the subject, the 30-second token window, Markdown rendering of personalisation, dashboard visibility of reset links.
 
+
 ## Milestone commit
 
-`main` has a ruleset, so this goes on a branch and a squash-merged PR. Check `git status` first: only `docs/design.md`, `docs/plan.md`, `docs/spikes.md`, `COMMITS-TODO.md` and `src/` should be listed (no secrets, no `artifacts/`, no user-secrets, no review docs; `.superpowers/` is ignored). No lock file changed in M6.
+`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M7.
 
 ```bash
-git switch -c feat/m6-shared-pipeline
+git switch -c feat/m7-wave-a-providers
 git add -A
-git commit -m "feat: shared provider pipeline and conformance suite
+git commit -m "feat: SendGrid, Resend, Mailgun, Brevo and Mailjet providers
 
-Adds a provider registry and one send pipeline for every HTTP provider:
-pre-checks (50 recipients, per-provider caps, request size after encoding),
-the design 9.2 retry table (429, 420 and 503; 5xx only with an idempotency
-key), Retry-After with a 10-second ceiling, one timeout budget across all
-attempts, 64 KB capped reads and an allow-listed error code. Provider clients
-clear host-wide HttpClient handlers so a site's resilience policy cannot
-resend an invite. Postmark and GOV.UK Notify move onto the pipeline; ACS runs
-the shared pre-checks and keeps SDK retries off. Imports scrubbed provider
-fixtures and adds a conformance suite (C1-C12, F1-F15) with a registry guard
-and a registry-driven leak sweep."
+Adds five HTTP providers on the shared pipeline, each with a conformance
+profile, provider-specific tests and a registry entry. Mailgun sends
+multipart form data; Brevo carries its idempotency key in the body and treats
+a duplicate on a retry as accepted; Mailjet fails closed on any message that
+is not a success. The pipeline now refuses any request host outside a
+mapper's allow-list, and the leak sweep configures and checks every
+registered provider."
 git log -1 --stat | head -5
 ```

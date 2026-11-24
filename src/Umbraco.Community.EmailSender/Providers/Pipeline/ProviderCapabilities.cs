@@ -65,6 +65,13 @@ internal sealed record ProviderCapabilities
 
     public int? MaxAttachments { get; init; }
 
+    /// <summary>
+    /// Every host the mapper may ever address, all over https. The pipeline refuses any other host before sending, so a mapper
+    /// that builds its host from options can never send the credential elsewhere (M6 security review). Null skips the check
+    /// (test doubles only; a registry-driven test requires every real mapper to declare it).
+    /// </summary>
+    public IReadOnlyList<string>? AllowedHosts { get; init; }
+
     /// <summary>The whole serialised request, after base64. Null: the package cap only.</summary>
     public long? MaxRequestBytes { get; init; }
 

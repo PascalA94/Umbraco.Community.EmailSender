@@ -120,7 +120,7 @@ public class OptionsTests
     [Fact]
     public void UnknownProvider_ListsAllowedValues()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => EmailProviderKindParser.Parse("Mailgun"));
+        var ex = Assert.Throws<InvalidOperationException>(() => EmailProviderKindParser.Parse("Mailchimp"));
 
         Assert.Contains("AzureCommunicationServices", ex.Message);
         Assert.Contains("Postmark", ex.Message);

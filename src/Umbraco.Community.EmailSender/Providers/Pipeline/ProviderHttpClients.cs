@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Umbraco.Community.EmailSender.Providers.Pipeline;
 
@@ -29,6 +30,17 @@ internal static class ProviderHttpClients
             .ConfigureAdditionalHttpMessageHandlers((handlers, _) => handlers.Clear())
             // A redirect would carry the credential to another host, so none is followed.
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+
+    /// <summary>The registration every pipeline provider after Notify shares: its client, the clock, its mapper and the pipeline provider.</summary>
+    public static IServiceCollection AddPipelineProvider<TMapper>(this IServiceCollection services, string clientName)
+        where TMapper : class, IProviderMapper
+    {
+        services.AddEmailProviderClient(clientName);
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IProviderMapper, TMapper>();
+        services.AddSingleton<IEmailProvider, PipelineEmailProvider>();
+        return services;
+    }
 
     private static string PackageVersion()
     {
