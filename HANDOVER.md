@@ -1,6 +1,6 @@
 # Handover
 
-State on 2026-11-24, end of M10 (agent part). **CI has not run on M6 to M10.** Nothing has been run against a live provider.
+State on 2026-11-24, end of M10. PR #8 and Release checks are green on GitHub. Only Postmark has had a live run, and only partly (see Labels).
 
 ## What was built
 
@@ -31,14 +31,13 @@ State on 2026-11-24, end of M10 (agent part). **CI has not run on M6 to M10.** N
 
 ## Labels and evidence
 
-- Postmark: "Built from the provider's docs and checked against recorded examples". It becomes "Verified live" only after Task 11 records a real send in `docs/spikes.md`.
+- Postmark: "Built from the provider's docs and checked against recorded examples". Task 11 ran partly on 2026-11-24 (Sandbox server, Umbraco 18 only): health check, invite and password reset accepted, ids recorded in `docs/spikes.md`. Not run: Umbraco 17, content notification, the failure cases, link-unchanged check. The README says exactly this. It becomes "Verified live" after those are recorded.
 - ACS: Unverified (retires 30 Sep 2028). GOV.UK Notify: Unverified, Experimental.
 - The other 12: "Built from the provider's docs and checked against recorded examples". No provider is "Verified live". The README never says "supported" beyond a label.
 
 ## Unverified
 
-- Everything on GitHub: CI has not run on M6 to M10.
-- Every provider live (Task 11 and Task 33 not run).
+- Every provider except Postmark live; Postmark live on 18 only, partly. Task 33 (optional) was not run.
 - Elastic Email's `Idempotency-Key`; Bird and `Expires`; Graph's request size limit (a reviewer recalled about 4 MB; not checked); Notify trial-mode text; ACS and `Expires`. Details: `docs/spikes.md`.
 - The README screenshot shows a passing Postmark health check. Its origin is not recorded in `docs/spikes.md`: caption it as illustrative or record it.
 
@@ -57,9 +56,9 @@ Full per-milestone lists are in `COMMITS-TODO.md`. The ones from the final revie
 
 ## Pascal's to-do list
 
-1. Run the "Milestone commit" block at the end of `COMMITS-TODO.md` (branch, commit, PR). Do not commit `HANDOVER.md` or `COMMITS-TODO.md` to the public repo unless you decide to keep them tracked (undecided since M4; they list open gaps).
-2. Task 32: push the branch, open the PR, expect every required check green in about 5 minutes. Run **Release checks** by hand on the branch. Start a session to fix any failure under the owning task's tests.
-3. Task 11 (Postmark live check, gated on step 2): tell the next session which option you chose (Sandbox server, live Developer plan, or `POSTMARK_API_TEST`) and put the token in the demo site's user-secrets. Never paste it in chat.
+1. Done: PR #8 (milestone commit). Do not commit `HANDOVER.md` or `COMMITS-TODO.md` to the public repo unless you decide to keep them tracked (undecided since M4; they list open gaps).
+2. Task 32: done. PR #8 checks and Release checks were green. The README and spikes updates from the live run are uncommitted: add them to the PR or a new one.
+3. Task 11 is parked (decision 2026-11-24). To finish it: run the 17 demo (delete the demo's SQLite file first), a content notification, the three failure cases and the link-unchanged check. A Postmark account and a Sandbox server `emailsender-test` exist; the token is in the demo's user-secrets. The demo needs `EmailSender__Provider`, `EmailSender__From` and `Umbraco__CMS__Global__Smtp__From` set (core's Smtp From overrides ours), and recipients on the From domain while the account is pending approval.
 4. Task 33 (optional): name which of Resend, Bird, Brevo, Mailjet, Mailtrap and ACS you want to run live. Each skipped provider keeps its label.
 5. Task 34: README labels vs `docs/spikes.md`, then Release checks, squash-merge, tag `release/0.0-alpha.1`, `gh release create --prerelease --generate-notes`. No Marketplace listing for the alpha.
 6. Before the first tag: the nuget.org Trusted Publishing policy (repository, `publish.yml`, environment `nuget`); dismiss the CodeQL `cs/web/missing-token-validation` alert as a false positive; check the icon and screenshots on nuget.org afterwards.

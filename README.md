@@ -112,6 +112,8 @@ Free tiers are as of November 2026 and change. Check the provider's own pricing 
 
 Create a server, use its **Server API token** (the narrowest key that can send; not the account token), and give the sending domain a verified signature. With `DisableLinkTracking` on, each message is sent with `TrackLinks` set to `None` and `TrackOpens` off. Rotate a token in the server's API Tokens tab. Free tier (as of November 2026): the Developer plan, 100 a month, no card. While the account is pending approval, recipients must share the From domain. Postmark keeps the body of sent messages in its activity log, invite and reset links included.
 
+What has been run live: on 2026-11-24, on Umbraco 18 only, against a Postmark Sandbox server, the health check passed and an invite and a password-reset email were accepted. Umbraco 17, link tracking, content notifications and the failure cases were not checked, so the label stays as it is.
+
 ### Azure Communication Services
 
 Create an Email Communication Services resource with a verified domain, connect it to a Communication Services resource, and use that resource's connection string. Use a resource that only this site uses, so a leak is contained. The sender address (`EmailSender:From` or the Smtp From) must be a MailFrom address on the verified domain. A display name in the From setting is dropped.

@@ -40,7 +40,10 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 30 checkpoint: `docs: provider guides and status table`
 - [x] Task 31 checkpoint: `fix: final review findings (provider extension)`
 - [x] Task 32 Step 1 (agent pre-push checks) done; Steps 2 to 4 are Pascal's (push, PR, Release checks)
-- [ ] Task 11 (Postmark live), Task 33 (optional live checks), Task 34 (alpha): Pascal-gated, after Task 32
+- [x] Task 32: PR #8 checks and Release checks green (Pascal asked for the push, PR and workflow run in session)
+- [~] Task 11: partly run 2026-11-24 (Postmark Sandbox, Umbraco 18 only; see `docs/spikes.md`); the rest parked by decision
+- [ ] Task 33 (optional live checks): not asked yet
+- [~] Task 34 Step 1 and 2 done (README labels match the evidence, HANDOVER.md written); Steps 3 to 4 are Pascal's (merge, tag `release/0.0-alpha.1`, `gh release create`)
 
 ## Paused here (2026-11-24, M10: guides, final review, pre-push checks)
 
