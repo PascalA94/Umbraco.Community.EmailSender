@@ -25,8 +25,9 @@ internal sealed class ElasticEmailProfile : IProviderProfile
         ReplyTo = ReplyToStyle.CommaSeparated,
         Headers = HeaderPolicy.SendAsGiven,
         Tracking = TrackingStyle.PerRequest,
-        // The Idempotency-Key header is in the vendor's OpenAPI, not in the older rendered reference (design 9.13 row 17).
-        Idempotency = IdempotencyCarriage.Header,
+        // The Idempotency-Key header is in the vendor's OpenAPI only, never seen live (design 9.13 row 17). Unknowns get the safe
+        // default (design 9.11): no key, so no retry of a 5xx or a lost connection that may have been accepted.
+        Idempotency = IdempotencyCarriage.None,
         // The schema has no content-id field.
         Inline = InlineContentId.None,
         MessageId = "-HHGPM_9RPhSMiaJq_ab4g3",

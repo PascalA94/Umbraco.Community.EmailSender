@@ -101,9 +101,17 @@ internal sealed class Smtp2GoMapper : IProviderMapper
             return ProviderOutcome.Rejected(status, code, Hint(response.StatusCode), retryable: false, quotaStop: false);
         }
 
-        if (ResponseReader.Int(root, "data", "failed") is > 0)
+        if (ResponseReader.Int(root, "data", "failed") is > 0 and var failed)
         {
-            return ProviderOutcome.Rejected(status, null, UnverifiedSender(root) ? "Verify the sender domain or address in SMTP2GO." : null, retryable: false, quotaStop: false);
+            var succeeded = ResponseReader.Int(root, "data", "succeeded") ?? 0;
+            var hint = UnverifiedSender(root) ? "Verify the sender domain or address in SMTP2GO." : null;
+            // A resend of the whole email would reach the accepted recipients twice, so say they were accepted.
+            if (succeeded > 0)
+            {
+                hint = $"{failed} of {failed + succeeded} recipients failed. The other {succeeded} {(succeeded == 1 ? "was" : "were")} accepted: do not resend to them.";
+            }
+
+            return ProviderOutcome.Rejected(status, null, hint, retryable: false, quotaStop: false);
         }
 
         // A 200 is not proof of acceptance: it needs positive evidence (an id, or a success count), or it fails closed.

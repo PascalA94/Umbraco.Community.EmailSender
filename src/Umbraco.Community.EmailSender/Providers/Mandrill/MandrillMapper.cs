@@ -123,6 +123,11 @@ internal sealed class MandrillMapper : IProviderMapper
         var text = reason is null
             ? $"{rejected} of {total} recipients rejected."
             : $"{rejected} of {total} recipients rejected (reject_reason: {reason}).";
+        // A resend of the whole email would reach the accepted recipients twice, so say they were accepted.
+        if (rejected < total)
+        {
+            text += $" The other {total - rejected} {(total - rejected == 1 ? "was" : "were")} accepted: do not resend to them.";
+        }
         // Mail from an unverified domain is not an HTTP error: it comes back rejected with reject_reason unsigned.
         if (reason == "unsigned")
         {

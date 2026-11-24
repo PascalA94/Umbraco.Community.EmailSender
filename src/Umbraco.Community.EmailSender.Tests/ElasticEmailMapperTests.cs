@@ -55,26 +55,24 @@ public class ElasticEmailMapperTests
     }
 
     [Fact]
-    public async Task IdempotencyKey_Header()
+    public async Task NoIdempotencyKeyIsSent_BecauseItIsUnverified()
     {
-        using var rig = new ConformanceRig(Profile, (n, _, _) => Task.FromResult(n < 3 ? FakeProviderServer.Answer(HttpStatusCode.ServiceUnavailable, string.Empty, "0") : FakeProviderServer.Success(Profile)));
-
-        Assert.Null(await rig.SendAsync(Scenarios.Minimal()));
-
-        var keys = rig.Server.Calls.Select((_, i) => rig.Recorded(i).IdempotencyKey).ToList();
-        Assert.Equal(3, keys.Count);
-        Assert.True(Guid.TryParse(keys[0], out _));
-        Assert.All(keys, k => Assert.Equal(keys[0], k));
-    }
-
-    [Fact]
-    public async Task Status500_RetriedBecauseOfTheKey()
-    {
-        using var rig = new ConformanceRig(Profile, (n, _, _) => Task.FromResult(n == 1 ? FakeProviderServer.Answer(HttpStatusCode.InternalServerError, string.Empty) : FakeProviderServer.Success(Profile)));
+        using var rig = new ConformanceRig(Profile, (n, _, _) => Task.FromResult(n < 2 ? FakeProviderServer.Answer(HttpStatusCode.ServiceUnavailable, string.Empty, "0") : FakeProviderServer.Success(Profile)));
 
         Assert.Null(await rig.SendAsync(Scenarios.Minimal()));
 
         Assert.Equal(2, rig.Server.Calls.Count);
+        Assert.All(rig.Server.Calls.Select((_, i) => rig.Recorded(i).IdempotencyKey), k => Assert.Null(k));
+    }
+
+    [Fact]
+    public async Task Status500_IsNotRetried_BecauseTheSendMayHaveBeenAccepted()
+    {
+        using var rig = new ConformanceRig(Profile, (n, _, _) => Task.FromResult(n == 1 ? FakeProviderServer.Answer(HttpStatusCode.InternalServerError, string.Empty) : FakeProviderServer.Success(Profile)));
+
+        Assert.NotNull(await rig.SendAsync(Scenarios.Minimal()));
+
+        Assert.Single(rig.Server.Calls);
     }
 
     [Theory]
