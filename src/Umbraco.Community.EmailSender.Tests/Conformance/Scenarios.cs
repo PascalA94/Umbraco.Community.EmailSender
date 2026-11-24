@@ -47,7 +47,7 @@ internal sealed class ConformanceRig : IDisposable
         Action<EmailSenderOptions>? tweak = null)
     {
         Profile = profile;
-        Server = new FakeProviderServer(Clock, respond);
+        Server = new FakeProviderServer(Clock, respond, profile.Auxiliary);
         Options = profile.Options();
         tweak?.Invoke(Options);
         var monitor = Substitute.For<IOptionsMonitor<EmailSenderOptions>>();

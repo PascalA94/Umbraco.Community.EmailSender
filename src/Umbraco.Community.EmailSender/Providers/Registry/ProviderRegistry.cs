@@ -7,6 +7,7 @@ using Umbraco.Community.EmailSender.Providers.MailerSend;
 using Umbraco.Community.EmailSender.Providers.Mailgun;
 using Umbraco.Community.EmailSender.Providers.Mailtrap;
 using Umbraco.Community.EmailSender.Providers.Mandrill;
+using Umbraco.Community.EmailSender.Providers.MicrosoftGraph;
 using Umbraco.Community.EmailSender.Providers.Mailjet;
 using Umbraco.Community.EmailSender.Providers.Pipeline;
 using Umbraco.Community.EmailSender.Providers.GovUkNotify;
@@ -39,6 +40,7 @@ internal static class ProviderRegistry
         new(EmailProviderKind.ElasticEmail, nameof(EmailProviderKind.ElasticEmail), ElasticEmailValidation.Validate, s => s.AddPipelineProvider<ElasticEmailMapper>(ElasticEmailMapper.ClientName)),
         new(EmailProviderKind.Mandrill, nameof(EmailProviderKind.Mandrill), MandrillValidation.Validate, s => s.AddPipelineProvider<MandrillMapper>(MandrillMapper.ClientName)),
         new(EmailProviderKind.Mailtrap, nameof(EmailProviderKind.Mailtrap), MailtrapValidation.Validate, s => s.AddPipelineProvider<MailtrapMapper>(MailtrapMapper.ClientName)),
+        new(EmailProviderKind.MicrosoftGraph, nameof(EmailProviderKind.MicrosoftGraph), MicrosoftGraphValidation.Validate, s => s.AddMicrosoftGraphProvider()),
     ];
 
     public static ProviderDefinition Get(EmailProviderKind kind)

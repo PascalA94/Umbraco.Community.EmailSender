@@ -3,9 +3,15 @@ using System.Net;
 namespace Umbraco.Community.EmailSender.Tests.Conformance;
 
 /// <summary>The primary handler under every named client in a conformance rig: records each request and answers by call number.</summary>
-internal sealed class FakeProviderServer(TimeProvider clock, Func<int, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
+internal sealed class FakeProviderServer(
+    TimeProvider clock,
+    Func<int, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond,
+    Func<HttpRequestMessage, HttpResponseMessage?>? auxiliary = null) : HttpMessageHandler
 {
     private int inFlight;
+
+    /// <summary>Requests the profile's auxiliary answer took (Graph's token requests): not counted as sends.</summary>
+    public List<(HttpRequestMessage Request, byte[] Body)> AuxCalls { get; } = [];
 
     public List<(HttpRequestMessage Request, byte[] Body, DateTimeOffset At)> Calls { get; } = [];
 
@@ -15,6 +21,12 @@ internal sealed class FakeProviderServer(TimeProvider clock, Func<int, HttpReque
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         var body = request.Content is null ? [] : await request.Content.ReadAsByteArrayAsync(ct);
+        if (auxiliary?.Invoke(request) is { } aux)
+        {
+            AuxCalls.Add((request, body));
+            return aux;
+        }
+
         Calls.Add((request, body, clock.GetUtcNow()));
         var answer = respond(Calls.Count, request, ct);
         // Only an answer that is genuinely still pending is a hang. Counting an instant one made the clock driver, sampling

@@ -35,6 +35,30 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 25 checkpoint: `feat: Elastic Email provider`
 - [x] Task 26 checkpoint: `feat: Mandrill provider`
 - [x] Task 27 checkpoint: `feat: Mailtrap provider` (also: fake server counts only a genuinely pending answer as in flight; a clock-driver race timed out Mandrill C11 once under load)
+- [x] Task 28 checkpoint: `feat: Microsoft Graph token source`
+- [x] Task 29 checkpoint: `feat: Microsoft Graph provider`
+
+## Paused here (2026-11-24, M9: Microsoft Graph)
+
+Milestone: Tasks 28 and 29 done: `GraphTokenSource` (one cached Entra client-credentials token, single-flight, 5 minute skew with a 60 s floor, dropped on a settings change) and the Graph provider on the shared pipeline (`MicrosoftGraph` kind and options, validation, mapper, profile, health check). Docs refreshed from the workspace (identical); the path check printed nothing. gitleaks clean over `src/`. New pipeline hooks on `IProviderMapper` (`AcquireCredentialAsync`, `RefreshesCredentialOnUnauthorized`/`ForgetCredential`, `CheckHealthAsync`), all defaulting to no-ops, so the 14 other providers are unchanged; a Debug line when a provider that ignores From was given one.
+Tests: `./scripts/test.sh` passes on both lines (unit 1229 on 17, 1227 on 18; integration 4/4 each), repeated three times. No new package, no lock file change. CI has not run on this milestone. Nothing was run live. Mutation checks made tests fail: removing the token double-check, registering the token client with a plain `AddHttpClient`. Removing the "refresh once" flag makes the send loop hang rather than fail (noted by the QA review). Task 28 and 29 tests were written before the code (compile errors, then missing registration, were the watched RED); most passed on the first run after implementing.
+Reviews (uncommitted M9 diff against `52a553b`): security-analyst (opus): no Critical or High, 1 Medium, 2 Low, 5 Info. qa-reviewer (opus): no Critical, 2 Important, 9 Minor. Fixed:
+- Medium: a Graph 503 was retried (shared table) although Graph has no idempotency key and design 9.4 says a 5xx is never retried. Only 429 retries now (tests for 500, 503, 504; C11 not applicable to Graph).
+- Important: a 401 refresh on the last attempt lifted the attempt bound (a throttled tenant would be hammered until the budget ended). Refresh only before the last attempt, and the bound checks are `>=`.
+- Important: the client redirect/handler guard missed the token client, which carries the client secret. It now covers it.
+- Low: a token fetched while the settings changed could be cached (the entry now carries its generation); GUIDs with surrounding whitespace passed validation (canonical form only); a malformed token was cached (RFC 6750 characters only); `%` removed from the sender address pattern.
+- Minor: F11 reason corrected and a 35 MB request-cap test added; token-count assertions added (F4, the 3 MB test); the short-lifetime test now checks the cached side.
+Rulings: a Graph 503 is not retried (stricter than design 9.2, per 9.4); the 401 text is the shared format with a fixed hint, not the design's bespoke sentence; F1 uses 403 as the auth signal (a 401 refreshes, so it sends twice); conformance gained an `Auxiliary` hook so the token request is answered but not counted as a send; one Debug line for any provider with `UsesFromAddress = false` (Notify too). Cost if wrong: small text changes before the first alpha. Unknowns are in `docs/spikes.md` under M9.
+Deferred minors (M9):
+- `Invalidate()` is not compare-and-clear: many sends getting a 401 at once can make a few extra token requests.
+- Concurrent-send test uses a fixed 100 ms delay (can only false-pass); no concurrent `SendAsync` test at provider level.
+- `Unauthorized_RefreshesOnceThenFails` would hang, not fail, if the flag were removed; no xUnit timeouts on the Graph pipeline tests.
+- The Debug From line fires on every Graph or Notify send where a From is configured (design says "differs"), has no Notify test, and a malformed configured From still fails a Graph send.
+- No leak-sweep path where the token endpoint fails (covered only in `GraphTokenSourceTests`); a hanging token endpoint has no test.
+- README line to add in M10: Graph returns no message id and keeps no copy, so misuse leaves only Exchange message trace.
+- One C11 failure on line 17 seen by the QA review mid-session was the 503 change landing before C11 was marked not applicable for Graph; three full runs since are clean.
+- Carried from M7 and M8 and still open (see those notes).
+Next task: **Task 30 (README provider guides, status table and tags), the start of M10** (Sonnet session; reviewers on opus). Task 11 (Postmark live) is Pascal-gated and also sits in M10.
 
 ## Paused here (2026-11-24, M8: wave B)
 
@@ -124,21 +148,21 @@ Deferred minors:
 
 ## Milestone commit
 
-`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M8.
+`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M9.
 
 ```bash
-git switch -c feat/m8-wave-b-providers
+git switch -c feat/m9-microsoft-graph
 git status --short
 git add -A
-git commit -m "feat: Bird, MailerSend, SMTP2GO, Elastic Email, Mandrill and Mailtrap providers
+git commit -m "feat: Microsoft Graph provider
 
-Adds six HTTP providers on the shared pipeline, each with a conformance
-profile, provider-specific tests and a registry entry. Bird always sends
-transactional mail with tracking switched off explicitly; MailerSend reads
-its id from a header; SMTP2GO and Mandrill fail closed on a 200 that hides a
-failure; Elastic Email maps status only; Mandrill's key travels in the body
-and is kept out of every log. Bird and SMTP2GO warn at start-up when the key
-prefix looks wrong. The test fake no longer counts an instant answer as a
-hung request, which made a healthy send time out under load."
+Adds Microsoft Graph sendMail with an app-only Entra token. The token is
+cached and shared by concurrent sends, refreshed shortly before it expires,
+refreshed once after a 401, and never logged. Graph sends as the configured
+mailbox, drops non-x- headers, refuses attachments over 3 MB and retries only
+a 429, because it has no idempotency key. The pipeline gains optional hooks
+for a per-attempt credential and a custom health check; other providers are
+unchanged. Tenant and mailbox ids are validated at start-up and again at send
+time before they become URL path segments."
 git log -1 --stat | head -5
 ```

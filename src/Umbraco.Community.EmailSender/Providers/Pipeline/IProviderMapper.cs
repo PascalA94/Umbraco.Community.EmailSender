@@ -21,6 +21,29 @@ internal interface IProviderMapper
     bool UsesFromAddress => true;
 
     /// <summary>
+    /// Fetches a short-lived credential before each attempt (Microsoft Graph's OAuth token), handed to <see cref="BuildRequest"/>
+    /// as <see cref="SendAttempt.Credential"/>. Null for a provider with a static key. May throw <see cref="EmailSendException"/>.
+    /// </summary>
+    ValueTask<string?> AcquireCredentialAsync(EmailSenderOptions options, CancellationToken ct) => ValueTask.FromResult<string?>(null);
+
+    /// <summary>
+    /// True when a 401 means the credential expired, not that the send was refused: the pipeline calls
+    /// <see cref="ForgetCredential"/> and repeats the attempt once (design 9.2: "Graph only").
+    /// </summary>
+    bool RefreshesCredentialOnUnauthorized => false;
+
+    /// <summary>Drops the cached credential after a 401 (see <see cref="RefreshesCredentialOnUnauthorized"/>).</summary>
+    void ForgetCredential()
+    {
+    }
+
+    /// <summary>
+    /// A check that is not one read-only request on the provider's own client (Graph asks the token endpoint). Null: use
+    /// <see cref="BuildHealthRequest"/>. May throw <see cref="EmailSendException"/>, which becomes an Error result.
+    /// </summary>
+    ValueTask<HealthCheckStatus?> CheckHealthAsync(EmailSenderOptions options, CancellationToken ct) => ValueTask.FromResult<HealthCheckStatus?>(null);
+
+    /// <summary>
     /// Called once per attempt: a request cannot be sent twice. The URI is absolute and built from the current options, so a
     /// region change applies at the next send. Throws <see cref="EmailSendException"/> for a problem the options cause.
     /// </summary>

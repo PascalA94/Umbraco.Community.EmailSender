@@ -17,6 +17,7 @@ public enum EmailProviderKind
     ElasticEmail,
     Mandrill,
     Mailtrap,
+    MicrosoftGraph,
 }
 
 /// <summary>Parses <c>EmailSender:Provider</c> case-insensitively and names the allowed values on failure.</summary>

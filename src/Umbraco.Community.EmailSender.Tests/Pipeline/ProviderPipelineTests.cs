@@ -276,20 +276,31 @@ public class ProviderPipelineTests
         }
 
         using var provider = services.BuildServiceProvider();
-        var clientName = provider.GetService<IProviderMapper>()?.ClientName
-            ?? Umbraco.Community.EmailSender.Providers.AzureCommunicationServices.AcsProvider.ClientName;
-
-        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(clientName);
-        var chain = new List<HttpMessageHandler>();
-        while (handler is not null)
+        var clientNames = new List<string>
         {
-            chain.Add(handler);
-            handler = (handler as DelegatingHandler)?.InnerHandler;
+            provider.GetService<IProviderMapper>()?.ClientName
+                ?? Umbraco.Community.EmailSender.Providers.AzureCommunicationServices.AcsProvider.ClientName,
+        };
+        // Graph's token client carries the client secret: a redirect (307 keeps method and body) or a host retry handler must never reach it either.
+        if (kind == Umbraco.Community.EmailSender.Configuration.EmailProviderKind.MicrosoftGraph)
+        {
+            clientNames.Add(Umbraco.Community.EmailSender.Providers.MicrosoftGraph.GraphTokenSource.ClientName);
         }
 
-        Assert.DoesNotContain(chain, h => h is HostRetryHandler);
-        Assert.DoesNotContain(chain, h => h.GetType().Name.Contains("Logging", StringComparison.Ordinal));
-        Assert.False(Assert.IsType<SocketsHttpHandler>(chain[^1]).AllowAutoRedirect);
+        foreach (var clientName in clientNames)
+        {
+            HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(clientName);
+            var chain = new List<HttpMessageHandler>();
+            while (handler is not null)
+            {
+                chain.Add(handler);
+                handler = (handler as DelegatingHandler)?.InnerHandler;
+            }
+
+            Assert.DoesNotContain(chain, h => h is HostRetryHandler);
+            Assert.DoesNotContain(chain, h => h.GetType().Name.Contains("Logging", StringComparison.Ordinal));
+            Assert.False(Assert.IsType<SocketsHttpHandler>(chain[^1]).AllowAutoRedirect);
+        }
     }
 
     public static TheoryData<Umbraco.Community.EmailSender.Configuration.EmailProviderKind, bool> KindsAndOrder()

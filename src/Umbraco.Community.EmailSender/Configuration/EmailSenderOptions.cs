@@ -40,6 +40,7 @@ public sealed class EmailSenderOptions
     public ElasticEmailOptions ElasticEmail { get; set; } = new();
     public MandrillOptions Mandrill { get; set; } = new();
     public MailtrapOptions Mailtrap { get; set; } = new();
+    public MicrosoftGraphOptions MicrosoftGraph { get; set; } = new();
 
     public override string ToString() => $"EmailSenderOptions {{ Provider = {Provider}, Secrets = *** }}";
 }
@@ -189,4 +190,25 @@ public sealed class MailtrapOptions
     public string? ApiKey { get; set; }
 
     public override string ToString() => "MailtrapOptions { ApiKey = *** }";
+}
+
+public sealed class MicrosoftGraphOptions
+{
+    /// <summary>The Entra tenant: a GUID or a domain name such as <c>contoso.onmicrosoft.com</c>. It becomes a URL path segment.</summary>
+    public string? TenantId { get; set; }
+
+    /// <summary>The application (client) id of the Entra app registration, a GUID.</summary>
+    public string? ClientId { get; set; }
+
+    /// <summary>The app's client secret. Certificate credentials are not supported yet.</summary>
+    [JsonIgnore]
+    public string? ClientSecret { get; set; }
+
+    /// <summary>The mailbox to send as: its object id (a GUID) or its address. It becomes a URL path segment.</summary>
+    public string? SenderUserId { get; set; }
+
+    /// <summary>Keep a copy in the mailbox's Sent Items. Off by default: invites and resets would clutter it.</summary>
+    public bool SaveToSentItems { get; set; }
+
+    public override string ToString() => $"MicrosoftGraphOptions {{ ClientSecret = ***, SaveToSentItems = {SaveToSentItems} }}";
 }
