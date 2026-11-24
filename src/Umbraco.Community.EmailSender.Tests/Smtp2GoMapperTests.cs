@@ -27,6 +27,18 @@ public class Smtp2GoMapperTests
         Assert.Single(rig.Server.Calls);
     }
 
+    [Fact]
+    public async Task TwoXx_PartlyFailed_SaysTheOthersWereAccepted()
+    {
+        using var rig = new ConformanceRig(Profile, (_, _, _) => Task.FromResult(FakeProviderServer.Answer(HttpStatusCode.OK,
+            """{"request_id":"x","data":{"succeeded":2,"failed":1,"failures":["x"],"email_id":"abc"}}""")));
+
+        var error = await rig.SendAsync(Scenarios.Minimal());
+
+        Assert.Equal("SMTP2GO rejected the email: HTTP 200. 1 of 3 recipients failed. The other 2 were accepted: do not resend to them.", error?.Message);
+        Assert.Single(rig.Server.Calls);
+    }
+
     [Theory]
     [InlineData("""{"request_id":"x","data":{"succeeded":0,"failed":0,"failures":[]}}""")]
     [InlineData("{}")]

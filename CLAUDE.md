@@ -47,6 +47,10 @@ dotnet dev-certs https && dotnet run --project demo/Umbraco.Community.EmailSende
 - No statics, no network calls at start-up (providers are singletons over `IHttpClientFactory` and `IOptionsMonitor`). The health check looks the provider up lazily because health checks are discovered even when no provider is registered.
 - GOV.UK Notify: one template (`((subject))`, `((body))`), one request per recipient, no attachments, Cc or Bcc, no From.
 - Config keys, aliases, HttpClient names and the health-check GUID are permanent.
+- 15 providers share one pipeline (`Providers/Pipeline/`): pre-checks, size cap, one time budget, the retry table, capped reads, one log line. A mapper can only narrow the retry table, never widen it. Retry only when the provider certainly did not accept the send or documents an idempotency key; a duplicate invite is worse than a failed one. ACS stays off the pipeline retry.
+- The provider registry (`Providers/Registry/`) is the only list of providers. A new provider adds a definition, a conformance profile and a row in `LeakTests` and `ReadmeTests`; the registry guard fails the build if one is missing.
+- The README labels a provider only as far as `docs/spikes.md` evidences it (design 9.7), and never says "supported" beyond a label. The alpha carries no `umbraco-marketplace` tag.
+- Unknowns are carried, not chased: use the safe default (status-only errors, package size cap, no residency claim, Info health check), record it in `docs/spikes.md`, and move on.
 
 ## Keep
 

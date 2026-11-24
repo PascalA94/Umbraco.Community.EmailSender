@@ -37,6 +37,22 @@ Pascal commits once per milestone. Plan checkpoints are logged here as a record.
 - [x] Task 27 checkpoint: `feat: Mailtrap provider` (also: fake server counts only a genuinely pending answer as in flight; a clock-driver race timed out Mandrill C11 once under load)
 - [x] Task 28 checkpoint: `feat: Microsoft Graph token source`
 - [x] Task 29 checkpoint: `feat: Microsoft Graph provider`
+- [x] Task 30 checkpoint: `docs: provider guides and status table`
+- [x] Task 31 checkpoint: `fix: final review findings (provider extension)`
+- [x] Task 32 Step 1 (agent pre-push checks) done; Steps 2 to 4 are Pascal's (push, PR, Release checks)
+- [x] Task 32: PR #8 checks and Release checks green (Pascal asked for the push, PR and workflow run in session)
+- [~] Task 11: partly run 2026-11-24 (Postmark Sandbox, Umbraco 18 only; see `docs/spikes.md`); the rest parked by decision
+- [ ] Task 33 (optional live checks): not asked yet
+- [~] Task 34 Step 1 and 2 done (README labels match the evidence, HANDOVER.md written); Steps 3 to 4 are Pascal's (merge, tag `release/0.0-alpha.1`, `gh release create`)
+
+## Paused here (2026-11-24, M10: guides, final review, pre-push checks)
+
+Milestone: Tasks 30, 31 and 32 Step 1 done. README has the status table, a guide per provider and the shared rules; tags carry the provider names and no `umbraco-marketplace` tag (prerelease); CLAUDE.md gained the pipeline, registry guard and unknowns rules. `ReadmeTests` added (guide and label per provider, Notify Experimental, no "supported" beyond a label, health-check and 401 wording, tags). Docs refreshed from the workspace (identical); the path check printed nothing.
+Tests: `./scripts/test.sh` passes twice in a row on both lines (unit 1251 on 17, 1249 on 18; integration 4/4 each). gitleaks clean over `src/` and the fixtures. `check-vulnerable` clean on both lines; `check-release-version.sh release/0.0-alpha.1` exits 0. **CI has not run on M6 to M10.** Nothing was run live.
+Final reviews (whole branch): qa-reviewer (opus): no Critical, 3 Important, 8 Minor. security-analyst (opus): no Critical, High or Medium, 7 Low, 10 Info; signed off for an alpha, not for production. Fixed with a failing test first: README health-check claim (only Postmark, Notify and Graph check credentials); Mandrill and SMTP2GO partial acceptance now says the others were accepted; Elastic Email sends no idempotency key and is not retried after a 5xx. Also README 401 wording (Graph refreshes once).
+Rulings: Elastic Email is `IdempotencyCarriage.None` (design 9.11 safe default; its two old tests replaced); a partial-acceptance error keeps the shared "rejected the email" prefix and adds a fixed hint; Brevo duplicate-after-429, Resend 409, body-read failure after a 2xx and handler filters stay deferred (speculative or rare, each needs a provider behaviour nobody has verified). Cost if wrong: a duplicate or lost invite in a rare provider failure.
+Deferred minors (M10): listed in `HANDOVER.md` ("Deferred minors"). The Graph request-size limit (about 4 MB recalled, unchecked) is in `docs/spikes.md` under M10.
+Next: **Pascal runs the Milestone commit below, then Task 32 Steps 2 to 4 (push, PR, Release checks).** Then Task 11 (Postmark, Pascal-gated: say which option you chose and put the token in user-secrets), optional Task 33, and Task 34 (labels check, tag). HANDOVER.md is written.
 
 ## Paused here (2026-11-24, M9: Microsoft Graph)
 
@@ -145,24 +161,25 @@ Deferred minors:
 - Carried from M2: ACS no recipient-count guard, 10 MB cap is raw bytes, no concurrency test on the ACS client cache, `Redirect_IsAFailureAndTheTokenIsNotResent` proves only that a 3xx fails, MimeKit used transitively, config binder echoes a mistyped `TimeoutSeconds`/`MaxTotalAttachmentBytes`/`DisableLinkTracking`, `EmailProviderKindParser` is public, attachment path is synchronous and buffers, never `{@}`-destructure the options or `OutboundEmail` in logs.
 - To check live in Task 11: ACS and the `Expires` header; Notify trial-mode refusal text, `((subject))` in the subject, the 30-second token window, Markdown rendering of personalisation, dashboard visibility of reset links.
 
-
 ## Milestone commit
 
-`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `COMMITS-TODO.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M9.
+`main` has a ruleset, so this goes on a branch and a squash-merged PR. `git status` should list only `CLAUDE.md`, `COMMITS-TODO.md`, `HANDOVER.md`, `README.md`, `docs/spikes.md` and files under `src/` (no secrets, no `artifacts/`, no review docs). No lock file changed in M10. `COMMITS-TODO.md` and `HANDOVER.md` are tracked in the public repo (undecided since M4): drop them from the `git add` if you would rather keep them private.
 
 ```bash
-git switch -c feat/m9-microsoft-graph
+git switch -c feat/m10-guides-and-final-review
 git status --short
 git add -A
-git commit -m "feat: Microsoft Graph provider
+git commit -m "docs: provider guides, status table and final review fixes
 
-Adds Microsoft Graph sendMail with an app-only Entra token. The token is
-cached and shared by concurrent sends, refreshed shortly before it expires,
-refreshed once after a 401, and never logged. Graph sends as the configured
-mailbox, drops non-x- headers, refuses attachments over 3 MB and retries only
-a 429, because it has no idempotency key. The pipeline gains optional hooks
-for a per-attempt credential and a custom health check; other providers are
-unchanged. Tenant and mailbox ids are validated at start-up and again at send
-time before they become URL path segments."
+Adds the README status table and a guide per provider, the shared retry and
+size rules, and Graph's RBAC warning. The prerelease package drops the
+Marketplace tag and gains the provider tags. ReadmeTests guard the labels.
+
+Final review fixes: the health-check text no longer claims every provider
+checks credentials; Mandrill and SMTP2GO say the other recipients were
+accepted when a send partly fails; Elastic Email sends no idempotency key
+and is not retried after a 5xx until a live check shows the key works."
 git log -1 --stat | head -5
 ```
+
+

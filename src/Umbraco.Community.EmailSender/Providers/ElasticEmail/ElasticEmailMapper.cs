@@ -7,8 +7,9 @@ namespace Umbraco.Community.EmailSender.Providers.ElasticEmail;
 
 /// <summary>
 /// Elastic Email's <c>POST /v4/emails/transactional</c> (design 9.2 and 9.3). Its error bodies are undocumented, so a failure is
-/// status and a fixed hint only: no part of the body is read. The idempotency key goes in <c>Idempotency-Key</c> on every
-/// attempt, which is what makes a retry of a 500 safe.
+/// status and a fixed hint only: no part of the body is read. No idempotency key is sent: <c>Idempotency-Key</c> appears only in
+/// the vendor's OpenAPI and has never been seen to work live, so a 500 or a lost connection is not retried (design 9.11). Send the
+/// header and set <c>Idempotency = Header</c> only after a live check shows a repeated key is de-duplicated.
 /// </summary>
 internal sealed class ElasticEmailMapper : IProviderMapper
 {
@@ -27,7 +28,7 @@ internal sealed class ElasticEmailMapper : IProviderMapper
         // One comma-separated string.
         ReplyTo = ReplyToStyle.CommaSeparated,
         Tracking = TrackingStyle.PerRequest,
-        Idempotency = IdempotencyCarriage.Header,
+        Idempotency = IdempotencyCarriage.None,
         // The schema has no content-id field.
         Inline = InlineContentId.None,
     };
@@ -62,7 +63,6 @@ internal sealed class ElasticEmailMapper : IProviderMapper
         };
         // A key with CR or LF throws FormatException here; the provider wraps it by type name, so the key is never echoed.
         request.Headers.Add("X-ElasticEmail-ApiKey", options.ElasticEmail.ApiKey);
-        request.Headers.Add("Idempotency-Key", attempt.IdempotencyKey);
         return request;
     }
 

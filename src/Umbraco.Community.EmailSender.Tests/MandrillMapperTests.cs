@@ -23,7 +23,8 @@ public class MandrillMapperTests
 
         var error = await rig.SendAsync(Scenarios.Minimal());
 
-        Assert.Equal("Mandrill rejected the email: HTTP 200. 1 of 3 recipients rejected (reject_reason: hard-bounce).", error?.Message);
+        // 2 of 3 were accepted, so a caller that resends the whole email would send it twice to them.
+        Assert.Equal("Mandrill rejected the email: HTTP 200. 1 of 3 recipients rejected (reject_reason: hard-bounce). The other 2 were accepted: do not resend to them.", error?.Message);
         Assert.Single(rig.Server.Calls);
     }
 

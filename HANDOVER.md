@@ -1,20 +1,65 @@
 # Handover
 
-- **State (M0):** scaffolded from `umbracopkg` (`--umbraco-major 18 --with-backoffice false --with-e2e false`) and converted to the `UmbracoMajor` switch. `./scripts/test.sh` passes on 17 and 18 (unit 3/3, integration 2/2 per line, run after the final code edits). The 17.* latest leg restores unlocked and passes locally. `check-vulnerable` is clean on both lines, `scripts/pack.sh` gives 17.0.0-alpha.1 and 18.0.0-alpha.1, and `actionlint`, `shellcheck` and `gitleaks` are clean. The demo site builds on both lines but has not been booted (it needs the unattended password in user-secrets).
-- **CI:** green on GitHub since PR #1 (2026-11-11). Do not tag until Task 11 is done (see State M5).
-- **Layout rulings:** the template's `src/` + `demo/` layout is kept (tests in `src/`, not `tests/`). One demo site follows `-p:UmbracoMajor` instead of two. `Umbraco.Cms.Infrastructure` is the only Umbraco reference. The plan's `UmbracoFloat` is replaced by the template's `UmbracoTestVersion`/`UmbracoDemoVersion` overrides.
-- **Plan gaps:** `plan.md` has no M0, no "Resolved / Security review / Plan review" sections, and no Notify task. M0 was set to Task 1 with Pascal.
-- **Before the repo goes public (Pascal):**
-  1. Done in M3: the "Token rules" pointer line is gone from `CLAUDE.md` and local paths are scrubbed from `docs/` (uncommitted until you commit).
-  2. Scrub local paths and private file names from `docs/design.md` (header table) and `docs/plan.md` (spec path, repo path, review folder, clone command).
-  3. `grep -rnE "/Us[e]rs/|~/Do[c]uments|~/Pr[o]jects" . --exclude-dir=.git -I --exclude='*.lock.json'` must print nothing.
-  4. Follow `.github/REPO-SETUP.md`. On the first PR, read the real check names (the `osv` job shows as `osv / <job>`) before setting the ruleset.
-- **Pascal-only steps:** push, tag, publish, repo visibility, NuGet ID reservation and Trusted Publishing. Provider test credentials go in user-secrets when needed (Task 11).
-- **State (M1):** Tasks 2-4 built (options, mapping, sender, client). Both lines pass (unit 87 on 18, 89 on 17; integration 2/2). No provider exists yet, so do not pack or tag.
-- **Next session starts at:** Task 5.
-- **State (M3):** Tasks 6, 6b, 7 and 8 built: Postmark, ACS and GOV.UK Notify providers, the Email provider health check, leak tests and the docs. Both lines pass (unit 254 on 17, 252 on 18; integration 2/2). Not done: Task 9 (first CI run, Pascal), 10 (final review) and 11 (live exercise).
-- **Pascal, before the first release tag (security High from the M3 review):** create the GitHub environment `nuget` with you as required reviewer and tags limited to `release/*`; set Environment `nuget` on the nuget.org Trusted Publishing policy; add a tag ruleset on `refs/tags/release/*`. See `.github/REPO-SETUP.md` step 6.
-- **State (M4):** Task 10 done: final qa-reviewer and security-analyst reviews, no Critical or High. Important and Medium findings fixed with tests (unit 262 on 17, 260 on 18; integration 4/4 each). Task 9 CI was green before the fixes; the fixes have not run on GitHub. Not done: Task 11 (live exercise, needs provider credentials in user-secrets). The full handover is written after Task 11. See COMMITS-TODO.md for the Pascal-decides items and deferred minors.
-- **Next session starts at:** Task 11.
-- **State (M5, 2026-11-11):** PR #1 squash-merged into `main` with all seven checks green, so the M4 fixes have run on GitHub. Presentation done: new envelope icon (`assets/icon.svg`, `icon.png`), two health-check screenshots in `assets/screenshots/`, wired into `umbraco-marketplace.json` and the README. GitHub settings applied by Pascal: `nuget` environment (required reviewer, `release/*` tags only), `release tags` and `main` rulesets, secret scanning and push protection, Dependabot, private vulnerability reporting, CodeQL default setup, squash-only merging, About text and topics. Still open: Task 11 (live exercise on 17 and 18), the nuget.org Trusted Publishing policy (repository, `publish.yml`, environment `nuget`), dismissing the CodeQL `cs/web/missing-token-validation` alert as a false positive once the first scan finishes, the choice of alpha or stable for the first tag, and the two release scripts plus the Release checks run. Check the icon and screenshots on nuget.org and the Marketplace after the first release.
-- **Next session starts at:** Task 11.
+State on 2026-11-24, end of M10. PR #8 and Release checks are green on GitHub. Only Postmark has had a live run, and only partly (see Labels).
+
+## What was built
+
+- Package `Umbraco.Community.EmailSender`: sends all Umbraco email through an HTTP API instead of SMTP. One branch builds Umbraco 17 (17.8.0 or later) and 18 (18.3.0 or later) through `UmbracoMajor`.
+- 15 providers: Postmark, Azure Communication Services (SDK), GOV.UK Notify, SendGrid, Resend, Mailgun, Brevo, Mailjet, Bird, MailerSend, SMTP2GO, Elastic Email, Mandrill, Mailtrap, Microsoft Graph.
+- One shared pipeline (`Providers/Pipeline/`: pre-checks, size cap, one time budget, the retry table, capped reads, one log line), one provider registry, one conformance suite (C1 to C12, F1 to F15) with a profile per provider, and a leak sweep driven by the registry.
+- README: status table, one guide per provider, shared rules, Graph's RBAC warning first. `PackageTags` carry the provider names and no `umbraco-marketplace` tag while the version is a prerelease.
+- No new package since the ACS SDK. No lock file changed after M5.
+
+## Gates and tests
+
+- `./scripts/test.sh`, run twice in a row after the last change: 17 unit 1251 and integration 4/4; 18 unit 1249 and integration 4/4; `Failed: 0` each time.
+- `gitleaks dir src --redact` and `gitleaks dir src/Umbraco.Community.EmailSender.Tests/Fixtures --redact`: no leaks.
+- Path grep over the repo (excluding `.git`, lock files, build output): no hits. `docs/` holds only `design.md`, `plan.md`, `spikes.md`.
+- `bash build/check-vulnerable.sh` after a locked restore of each line: no vulnerable packages. `bash build/check-release-version.sh release/0.0-alpha.1`: exit 0.
+- Mutation checks and watched-RED tests are noted per milestone in `COMMITS-TODO.md`.
+
+## Reviews and fixes (summary)
+
+- M6 (opus, qa and security): a site-wide HTTP resilience handler could resend POSTs (fixed for every provider); a mapper could widen the retry table (the pipeline now enforces it); test-clock flakes (fixed).
+- M7, M8 (sonnet, qa): Brevo duplicate-on-retry rule, Mailjet fail-closed, SMTP2GO fail-closed, Bird `from` object: fixed.
+- M9 (opus, qa and security): Graph 503 no longer retried; the 401 refresh cannot lift the attempt bound; the token client has the redirect guard; token and id validation tightened: fixed.
+- Final whole-branch review (M10, opus, qa and security): no Critical, High or Medium. Fixed with a failing test first:
+  - README health-check text claimed most providers check credentials; only Postmark, Notify and Graph do, the rest report Info.
+  - Mandrill and SMTP2GO reported a partly accepted send as a plain rejection, which invites a duplicate resend; the error now says the others were accepted.
+  - Elastic Email retried 5xx on an `Idempotency-Key` never seen to work; no key is sent and it is not retried after a 5xx (design 9.11).
+  - README now says Microsoft Graph repeats a 401 once.
+
+## Labels and evidence
+
+- Postmark: "Built from the provider's docs and checked against recorded examples". Task 11 ran partly on 2026-11-24 (Sandbox server, Umbraco 18 only): health check, invite and password reset accepted, ids recorded in `docs/spikes.md`. Not run: Umbraco 17, content notification, the failure cases, link-unchanged check. The README says exactly this. It becomes "Verified live" after those are recorded.
+- ACS: Unverified (retires 30 Sep 2028). GOV.UK Notify: Unverified, Experimental.
+- The other 12: "Built from the provider's docs and checked against recorded examples". No provider is "Verified live". The README never says "supported" beyond a label.
+
+## Unverified
+
+- Every provider except Postmark live; Postmark live on 18 only, partly. Task 33 (optional) was not run.
+- Elastic Email's `Idempotency-Key`; Bird and `Expires`; Graph's request size limit (a reviewer recalled about 4 MB; not checked); Notify trial-mode text; ACS and `Expires`. Details: `docs/spikes.md`.
+- The README screenshot shows a passing Postmark health check. Its origin is not recorded in `docs/spikes.md`: caption it as illustrative or record it.
+
+## Deferred minors (still open)
+
+Full per-milestone lists are in `COMMITS-TODO.md`. The ones from the final review:
+
+- Brevo `duplicate_parameter` is read as accepted even after a 429 or 503 first attempt (only if Brevo records the key anyway).
+- Resend 409 `concurrent_idempotent_requests` on a retry is a plain rejection (probably accepted).
+- A body read that fails after a 2xx is reported as a timeout or failure, not as accepted for providers that do not fail closed.
+- Handler filters (`IHttpMessageHandlerBuilderFilter`) from other libraries are not cleared.
+- RTLO and other format characters survive in subjects and file names; Notify per-recipient budget; config binder echoes a mistyped non-secret value; ACS `SafeCode` uses `$`; `SafeId` admits `@`; health check skips the allowed-host check.
+- Echo-code leak case per provider; secret `Trim` check; `Invalidate()` is not compare-and-clear; a fixed 100 ms delay in the Graph concurrency test.
+- CI: no scheduled vulnerability scan; an unused osv ignore; the SQL Server image is not digest-pinned; `publish.yml` checkout keeps credentials.
+- README note to keep: Graph returns no message id and keeps no copy, so a misuse leaves only Exchange message trace.
+
+## Pascal's to-do list
+
+1. Done: PR #8 (milestone commit). Do not commit `HANDOVER.md` or `COMMITS-TODO.md` to the public repo unless you decide to keep them tracked (undecided since M4; they list open gaps).
+2. Task 32: done. PR #8 checks and Release checks were green. The README and spikes updates from the live run are uncommitted: add them to the PR or a new one.
+3. Task 11 is parked (decision 2026-11-24). To finish it: run the 17 demo (delete the demo's SQLite file first), a content notification, the three failure cases and the link-unchanged check. A Postmark account and a Sandbox server `emailsender-test` exist; the token is in the demo's user-secrets. The demo needs `EmailSender__Provider`, `EmailSender__From` and `Umbraco__CMS__Global__Smtp__From` set (core's Smtp From overrides ours), and recipients on the From domain while the account is pending approval.
+4. Task 33 (optional): name which of Resend, Bird, Brevo, Mailjet, Mailtrap and ACS you want to run live. Each skipped provider keeps its label.
+5. Task 34: README labels vs `docs/spikes.md`, then Release checks, squash-merge, tag `release/0.0-alpha.1`, `gh release create --prerelease --generate-notes`. No Marketplace listing for the alpha.
+6. Before the first tag: the nuget.org Trusted Publishing policy (repository, `publish.yml`, environment `nuget`); dismiss the CodeQL `cs/web/missing-token-validation` alert as a false positive; check the icon and screenshots on nuget.org afterwards.
+7. Before stable: put the `umbraco-marketplace` tag back, work through the deferred minors, and decide on label upgrades.

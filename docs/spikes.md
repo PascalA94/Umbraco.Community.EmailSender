@@ -150,3 +150,23 @@ Built from the research note and the recorded docs examples, not run live. Unkno
 - **Not verified:** the tenant-wide `Mail.Send` risk can only be reduced by the user (RBAC for Applications); the package cannot detect it. Failures after acceptance arrive as NDRs in the mailbox. Residency, `from.emailAddress.name` behaviour and header lookup in Sent Items are unresearched [unknown].
 - **503 is not retried (security review, Medium):** design 9.2's table retries a 503 as a not-accepted signal, but design 9.4 says Graph has no idempotency key so a 5xx is never retried. The stricter rule wins: `GraphMapper` marks only a 429 retryable, so a 503 fails at once. Whether a Graph 503 can follow an accepted send is [unknown]; the cost of being wrong is a failed send where a retry would have worked. Conformance C11 is therefore not applicable to Graph.
 - **Cache generation and canonical ids:** the cache entry carries the settings generation it was fetched under, so a token stored after a settings change is never served. GUIDs (tenant, client, mailbox) must be in canonical `D` form with no surrounding whitespace, because the raw value becomes a path segment. A token with characters outside RFC 6750 is refused rather than cached. A 401 refresh is never made on the last attempt.
+
+## M10
+
+- **Elastic Email idempotency (final review).** `Idempotency-Key` is in the vendor's OpenAPI only and has never been seen to work live. Safe default (design 9.11): no key is sent and a 5xx or lost connection is not retried. Revisit after a live check shows a repeated key is de-duplicated.
+- **Partial acceptance (Mandrill, SMTP2GO).** The send still fails (a recipient was rejected), but the error now says the others were accepted and not to resend to them.
+- **Graph request size [unverified].** A reviewer recalled a payload limit near 4 MB for Graph REST calls, below the package's 35 MB request cap, so an email with attachments under 3 MB each could still be refused by Graph. Not checked; the failure is a clear HTTP error. Carried.
+
+### Task 11: Postmark live check (partial, 2026-11-24)
+
+- **Option:** a Postmark **Sandbox server** (accepts and black-holes mail; Activity shows Delivered). Account on the free Developer plan, pending approval.
+- **Site:** the demo on the 18 line (18.3 floor) only. **Not yet run on 17.** Content notification and Forms workflow **not run**.
+- **Health check:** "Postmark accepted the server token." (core's SMTP check fails as documented).
+- **Invite:** sent, accepted by Postmark in 163 ms, message id starts `332eb13a`; Activity shows "Umbraco: Invitation" Processed then Delivered.
+- **Password reset:** sent, accepted in 148 ms, message id starts `3a60a692`; Activity shows "Umbraco: Reset Password" Processed then Delivered.
+- **`Expires`:** accepted (both sends returned 2xx with the header present). **Link tracking and the link left unchanged: not checked** (message bodies not opened).
+- **Negatives (wrong token, 12 MB attachment, `Provider` removed): not run.** Log grep for addresses (plan Step 5): not run.
+- **Surprises:**
+  - The demo's `Umbraco:CMS:Global:Smtp:From` overrides `EmailSender:From` (core sets From on every message), so a demo needs both set; the first two attempts failed with `ErrorCode 400` (From not a sender signature on the account).
+  - A Sandbox server on an account pending approval still enforces "recipients must share the From domain" (`ErrorCode 412`); the package hint for 412 worked as intended. The 400 error carries no hint (small improvement, deferred).
+- **Label:** stays "Built from the provider's docs and checked against recorded examples" until the 17 run, the negatives and the content notification are recorded.
