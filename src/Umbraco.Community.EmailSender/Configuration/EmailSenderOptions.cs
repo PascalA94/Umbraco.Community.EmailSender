@@ -34,6 +34,12 @@ public sealed class EmailSenderOptions
     public BrevoOptions Brevo { get; set; } = new();
 
     public MailjetOptions Mailjet { get; set; } = new();
+    public BirdOptions Bird { get; set; } = new();
+    public MailerSendOptions MailerSend { get; set; } = new();
+    public Smtp2GoOptions Smtp2Go { get; set; } = new();
+    public ElasticEmailOptions ElasticEmail { get; set; } = new();
+    public MandrillOptions Mandrill { get; set; } = new();
+    public MailtrapOptions Mailtrap { get; set; } = new();
 
     public override string ToString() => $"EmailSenderOptions {{ Provider = {Provider}, Secrets = *** }}";
 }
@@ -123,4 +129,64 @@ public sealed class MailjetOptions
     public string? SecretKey { get; set; }
 
     public override string ToString() => "MailjetOptions { ApiKey = ***, SecretKey = *** }";
+}
+
+public sealed class BirdOptions
+{
+    /// <summary>A workspace key (<c>bk_&lt;region&gt;_...</c>) or an organisation key (<c>bm_&lt;region&gt;_...</c>).</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    /// <summary><c>us1</c> (default) or <c>eu1</c>. Fixed per organisation at sign-up; the key must match.</summary>
+    public string Region { get; set; } = "us1";
+
+    public override string ToString() => $"BirdOptions {{ ApiKey = ***, Region = {Region} }}";
+}
+
+public sealed class MailerSendOptions
+{
+    /// <summary>The API token. Tokens are per sending domain, with scoped permissions.</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    public override string ToString() => "MailerSendOptions { ApiKey = *** }";
+}
+
+public sealed class Smtp2GoOptions
+{
+    /// <summary>The API key (<c>api-...</c>). Open and click tracking are settings on the key.</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    /// <summary><c>Global</c> (default, nearest region by resolver location), <c>US</c>, <c>EU</c> or <c>AU</c>. Use a regional value for data residency.</summary>
+    public string Region { get; set; } = "Global";
+
+    public override string ToString() => $"Smtp2GoOptions {{ ApiKey = ***, Region = {Region} }}";
+}
+
+public sealed class ElasticEmailOptions
+{
+    /// <summary>The API key. It needs the <c>SendHttp</c> access level.</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    public override string ToString() => "ElasticEmailOptions { ApiKey = *** }";
+}
+
+public sealed class MandrillOptions
+{
+    /// <summary>The Mandrill (Mailchimp Transactional) API key. It travels in the request body, never in a header.</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    public override string ToString() => "MandrillOptions { ApiKey = *** }";
+}
+
+public sealed class MailtrapOptions
+{
+    /// <summary>The Email Sending API token (not a Sandbox token), scoped to a verified sending domain.</summary>
+    [JsonIgnore]
+    public string? ApiKey { get; set; }
+
+    public override string ToString() => "MailtrapOptions { ApiKey = *** }";
 }

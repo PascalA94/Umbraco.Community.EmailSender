@@ -12,6 +12,12 @@ internal static class Profiles
         new MailgunProfile(),
         new BrevoProfile(),
         new MailjetProfile(),
+        new BirdProfile(),
+        new MailerSendProfile(),
+        new Smtp2GoProfile(),
+        new ElasticEmailProfile(),
+        new MandrillProfile(),
+        new MailtrapProfile(),
     ];
 
     public static IProviderProfile Get(string kind) => All.Single(p => p.Kind.ToString() == kind);

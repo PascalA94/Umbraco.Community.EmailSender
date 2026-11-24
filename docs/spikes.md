@@ -89,3 +89,47 @@ Each provider is built from its research note and checked against recorded examp
 - **Conformance suite changes:** a multipart provider's shape match compares form part names with the curl fixtures (`RecordedEmail.PartNames`, `FixtureLoader.CurlPartNames`); `ProfileExpectations.BinaryAttachments` sizes F11 without base64 growth; an empty `SuccessBody` means an empty response (SendGrid).
 - **Leak sweep found a real gap:** `LeakTests` configured only the three built providers, so a new provider ran with no secret set and proved nothing. Options now come from each provider's profile, every profile secret joins the sentinel list, every options class is printed, and the clock is a `SteppingClock` (a provider with an idempotency key waits before retrying a 500, which hung on a frozen fake clock).
 - Two older tests used "Mailgun" as an example of an unknown provider name; they now use "Mailchimp".
+
+## M8 (wave B: Bird, MailerSend, SMTP2GO, Elastic Email, Mandrill, Mailtrap)
+
+Same rules as M7: built from the research notes and recorded examples, none run live, unknowns carried with the safe default (design 9.11).
+
+- **Start-up warnings (Task 22):** `IProviderMapper.StartupWarnings` (default none) and one `ProviderStartupWarnings` handler log each selected mapper's fixed-text warnings once. A key prefix is a hint, never a failure, and the text never carries the key. Bird uses it first; SMTP2GO reuses it.
+- **Bird:**
+  - The 401 body is a synthesised shape and its `code` is `E0xxxx` [unknown]: the code is echoed only when it is a short token.
+  - 422 is both a field error (`validation_error`) and an unverified sender domain (a delivery or business-rule type [docs]); only `error.type == delivery_error` gets the verify-the-domain hint. If Bird names the type differently, F3 shows status and code only.
+  - 421 shows the shared error text with a fixed region hint (the plan quoted a bespoke sentence; the shared format keeps one shape for every provider).
+  - Free-plan caps are described both as 429 and as "rejected" [unknown]: every 429 is treated as a rate limit, so a daily cap retries up to the budget and then fails. No quota stop.
+  - The combined To, Cc and Bcc cap is unknown (shared 50); `Expires` may be a reserved header [unknown, design 9.13]; the optional live check finds out.
+  - `from` is sent as the object `{email, name}`, the form in Bird's own basic example (review finding: a string with a display name is unverified).
+- **MailerSend:**
+  - Success is a 202 with an empty body and the id in `x-message-id` only. A 202 with no id and a readable body (the `ALL_SUPPRESSED` warning, whose shape is not documented) fails with a fixed hint; an empty or unreadable body fails closed.
+  - `x-send-paused: true` is accepted with a Warning whether or not `x-message-id` is present: whether a paused 202 carries an id is undocumented [unknown].
+  - The 401 body is synthesised [unknown]: status only. The error code is the `#MSnnnnn` suffix of the message or of the first field error; nothing else of the text is read.
+  - Several usage limits are 422, not 429 (`MS42204`, `MS42242`, `MS42222`, `MS42225`): they fail at once with status and code. Only `MS42901` is a quota stop; other 429s (`MS42903`) retry.
+  - No idempotency key, so a 500 or a connection failure is never retried. No region host is documented, so one host.
+  - The trial domain's 10 MB attachment cap is left to the provider's 422 `MS42206` (design 9.13); the package applies 25 MB to the whole request.
+- **SMTP2GO:**
+  - The API answer for an unverified sender and for a sandboxed key is undocumented [unknown]. Any 2xx with `data.failed` above zero or `data.error_code` present is a failure; a failure text containing "not verified" gets the verify-the-sender hint, searched and never copied. An unreadable 2xx fails closed.
+  - Both documented error shapes (nested under `data` and flat) are parsed; only the error code is echoed, and only when it is a short token.
+  - No `Retry-After`, rate-limit headers or idempotency key are documented: a 429 backs off 1 s then 2 s, and a 500 or connection failure is never retried. `fastaccept` is never sent.
+  - Reply-To goes in `custom_headers` (comma-joined for several addresses); the per-attachment size and count caps are unknown (only the 50 MB request cap applies).
+  - Tracking is a per-API-key setting; the `Global` region picks the nearest endpoint by resolver location, so residency needs `US`, `EU` or `AU`.
+- **Elastic Email:**
+  - Error bodies are undocumented, so a failure is status and a fixed hint only; no part of the body is read. F3 (unverified sender) and F6 (quota) are not applicable: no signal is documented, and a 200 may precede a later suppression.
+  - The `Idempotency-Key` header is in the vendor's OpenAPI but not in the older rendered reference (design 9.13 row 17); it is sent on every attempt, so a 500 is retried. If the live API ignores it, a retried 500 could duplicate a send; the optional live check would show it.
+  - The 50-recipient and 20 MB caps come from a secondary source (the vendor's skill file); the package caps match them, and attachment count and size are otherwise unchecked.
+  - The API is said to return 5xx, not 429, under load [secondary]: those fall under the shared table (500, 502 and 504 retry only because of the key).
+  - No EU or UK host is documented, so one host. No inline content-id field exists in the schema.
+- **Mandrill:**
+  - The key is the body's `key` field. No header carries it; the request records print a fixed name, and a test checks the key is absent from the URL, headers, logs and error text.
+  - A 2xx is read per recipient: `sent`, `queued` and `scheduled` are accepted; anything else fails the whole send with a count and the first `reject_reason`, shown only when it is in the documented enum. A non-array, empty or unreadable 2xx fails closed. A "sent" entry that also carries a `reject_reason` (the docs sample does) is still accepted.
+  - The error text follows the shared shape ("Mandrill rejected the email: HTTP 200. 1 of 1 recipients rejected (reject_reason: unsigned)."); the plan quoted a bespoke sentence. Errors match on `name` (`Invalid_Key`, `PaymentRequired`), never the numeric `code`.
+  - The validation-error shape, any 429, and the unverified-sender behaviour with a test key are undocumented [unknown]: those fall to status and the name when it is a short token.
+  - `preserve_recipients` is not sent (default false), so a recipient may not see the To list in a Cc send; whether Cc and Bcc types behave as headers with the default is unverified. `bcc_address` and `images[]` are never used. No idempotency key, so a 500 or connection failure is never retried. Reply-To goes in `headers` (inferred from the field description).
+- **Mailtrap:**
+  - Only the transactional host is used, never the batch or sandbox hosts. Every attachment is `disposition: attachment` (no content id).
+  - A 401 means a bad token or an unverified sending domain [docs], so the hint says both; F3 reuses that signal. Tracking is not in the request schema [unknown]: the README says to check the domain or stream setting.
+  - The 429 body and any `Retry-After` are undocumented for the live API (the spec lists 429 for the sandbox only), so a 429 backs off 1 s then 2 s. An over-quota send on the free plan may be refused with another code [unknown]: status and a fixed hint only.
+  - `success: false` in a 200 is a failure (defensive). A 2xx with an unreadable body is accepted with id "none" (not fail-closed). One id per recipient: the first is logged.
+- **Test rig (found while adding Mandrill):** `FakeProviderServer.InFlight` counted an instant responder for the moment it ran, so the clock driver, sampling mid-answer under load, advanced past the send budget and timed out a healthy send (Mandrill C11, once). It now counts only an answer that is still pending when the responder returns.
